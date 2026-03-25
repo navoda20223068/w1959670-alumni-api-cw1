@@ -1,4 +1,6 @@
-'use strict'
+'use strict';
+
+require('dotenv').config();
 
 /**
  * Module dependencies.
@@ -15,9 +17,7 @@ var app = module.exports = express();
 // define a custom res.message() method
 // which stores messages in the session
 app.response.message = function(msg){
-  // reference `req.session` via the `this.req` reference
   var sess = this.req.session;
-  // simply add the msg to an array for later
   sess.messages = sess.messages || [];
   sess.messages.push(msg);
   return this;
@@ -31,9 +31,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // session support
 app.use(session({
-  resave: false, // don't save session if unmodified
-  saveUninitialized: false, // don't create session until something stored
-  secret: 'some secret here'
+  resave: false,
+  saveUninitialized: false,
+  secret: process.env.SESSION_SECRET || 'some secret here'
 }));
 
 // parse request bodies (req.body)
@@ -47,22 +47,10 @@ app.use(methodOverride('_method'));
 app.use(function(req, res, next){
   var msgs = req.session.messages || [];
 
-  // expose "messages" local variable
   res.locals.messages = msgs;
-
-  // expose "hasMessages"
   res.locals.hasMessages = !! msgs.length;
 
-  /* This is equivalent:
-   res.locals({
-     messages: msgs,
-     hasMessages: !! msgs.length
-   });
-  */
-
   next();
-  // empty or "flush" the messages so they
-  // don't build up
   req.session.messages = [];
 });
 
@@ -81,6 +69,7 @@ app.use(function(req, res, next){
 
 /* istanbul ignore next */
 if (!module.parent) {
-  app.listen(3000);
-  console.log('Express started on port 3000');
+  console.log('DB_NAME:', process.env.DB_NAME); //log to check the .env file being read
+  app.listen(process.env.PORT || 3000);
+  console.log(`Express started on port ${process.env.PORT || 3000}`);
 }

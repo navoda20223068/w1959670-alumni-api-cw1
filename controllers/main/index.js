@@ -1,7 +1,20 @@
-'use strict'
+'use strict';
 
-var path = require('path');
+const db = require('../../db');
 
-exports.index = function(req, res){
-  res.sendFile(path.join(__dirname, '../../public/index.html'));
+exports.index = async function (req, res) {
+  try {
+    const [rows] = await db.query('SELECT 1 AS test');
+
+    res.json({
+      success: true,
+      message: 'API + DB working',
+      db: rows[0]
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
 };
