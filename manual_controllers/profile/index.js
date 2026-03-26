@@ -318,3 +318,126 @@ exports.deleteDegree = async function (req, res) {
     }
 };
 
+exports.addCertification = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const userId = req.session.user.id;
+        const { certificationName, providerName, officialUrl, completionDate } = req.body;
+
+        if (!certificationName || !providerName) {
+            return res.status(400).json({
+                error: 'certificationName and providerName are required'
+            });
+        }
+
+        const [result] = await db.query(
+            `INSERT INTO certifications (user_id, certification_name, provider_name, official_url, completion_date)
+       VALUES (?, ?, ?, ?, ?)`,
+            [
+                userId,
+                certificationName,
+                providerName,
+                officialUrl || null,
+                completionDate || null
+            ]
+        );
+
+        res.status(201).json({
+            success: true,
+            message: 'Certification added successfully',
+            certificationId: result.insertId
+        });
+
+    } catch (err) {
+        console.error('Add certification error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.getCertifications = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const userId = req.session.user.id;
+
+        const [rows] = await db.query(
+            `SELECT * FROM certifications WHERE user_id = ?`,
+            [userId]
+        );
+
+        res.json({
+            success: true,
+            certifications: rows
+        });
+
+    } catch (err) {
+        console.error('Get certifications error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.updateCertification = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const userId = req.session.user.id;
+        const id = req.params.id;
+        const { certificationName, providerName, officialUrl, completionDate } = req.body;
+
+        await db.query(
+            `UPDATE certifications
+       SET certification_name = ?, provider_name = ?, official_url = ?, completion_date = ?
+       WHERE id = ? AND user_id = ?`,
+            [
+                certificationName,
+                providerName,
+                officialUrl || null,
+                completionDate || null,
+                id,
+                userId
+            ]
+        );
+
+        res.json({
+            success: true,
+            message: 'Certification updated successfully'
+        });
+
+    } catch (err) {
+        console.error('Update certification error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.deleteCertification = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const userId = req.session.user.id;
+        const id = req.params.id;
+
+        await db.query(
+            `DELETE FROM certifications WHERE id = ? AND user_id = ?`,
+            [id, userId]
+        );
+
+        res.json({
+            success: true,
+            message: 'Certification deleted successfully'
+        });
+
+    } catch (err) {
+        console.error('Delete certification error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
