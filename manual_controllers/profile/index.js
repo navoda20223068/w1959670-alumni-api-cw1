@@ -1,6 +1,8 @@
 'use strict';
 
 const db = require('../../db');
+const { updateProfileCompletionStatus } = require('./profileCompletion');
+
 
 exports.getMyProfile = async function (req, res) {
     try {
@@ -25,7 +27,7 @@ exports.getMyProfile = async function (req, res) {
                 error: 'Profile not found'
             });
         }
-
+        await updateProfileCompletionStatus(userId);
         return res.json({
             success: true,
             profile: rows[0]
@@ -72,26 +74,26 @@ exports.createMyProfile = async function (req, res) {
             });
         }
 
-        const completionStatus = biography && linkedinUrl ? 1 : 0;
-
         const [result] = await db.query(
-            `INSERT INTO profiles (user_id, first_name, last_name, biography, linkedin_url, completion_status)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO profiles (user_id, first_name, last_name, biography, linkedin_url)
+             VALUES (?, ?, ?, ?, ?)`,
             [
                 userId,
                 String(firstName).trim(),
                 String(lastName).trim(),
                 biography ? String(biography).trim() : null,
-                linkedinUrl ? String(linkedinUrl).trim() : null,
-                completionStatus
+                linkedinUrl ? String(linkedinUrl).trim() : null
             ]
         );
+
+        await updateProfileCompletionStatus(userId);
 
         return res.status(201).json({
             success: true,
             message: 'Profile created successfully',
             profileId: result.insertId
         });
+
     } catch (err) {
         console.error('Create profile error:', err);
         return res.status(500).json({
@@ -128,26 +130,26 @@ exports.updateMyProfile = async function (req, res) {
             });
         }
 
-        const completionStatus = biography && linkedinUrl ? 1 : 0;
-
         await db.query(
             `UPDATE profiles
-       SET first_name = ?, last_name = ?, biography = ?, linkedin_url = ?, completion_status = ?
-       WHERE user_id = ?`,
+             SET first_name = ?, last_name = ?, biography = ?, linkedin_url = ?
+             WHERE user_id = ?`,
             [
                 firstName ? String(firstName).trim() : null,
                 lastName ? String(lastName).trim() : null,
                 biography ? String(biography).trim() : null,
                 linkedinUrl ? String(linkedinUrl).trim() : null,
-                completionStatus,
                 userId
             ]
         );
+
+        await updateProfileCompletionStatus(userId);
 
         return res.json({
             success: true,
             message: 'Profile updated successfully'
         });
+
     } catch (err) {
         console.error('Update profile error:', err);
         return res.status(500).json({
@@ -182,46 +184,7 @@ exports.addDegree = async function (req, res) {
                 completionDate || null
             ]
         );
-
-        res.status(201).json({
-            success: true,
-            message: 'Degree added successfully',
-            degreeId: result.insertId
-        });
-
-    } catch (err) {
-        console.error('Add degree error:', err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-};
-
-exports.addDegree = async function (req, res) {
-    try {
-        if (!req.session || !req.session.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
-        const userId = req.session.user.id;
-        const { degreeName, institutionName, officialUrl, completionDate } = req.body;
-
-        if (!degreeName || !institutionName) {
-            return res.status(400).json({
-                error: 'degreeName and institutionName are required'
-            });
-        }
-
-        const [result] = await db.query(
-            `INSERT INTO degrees (user_id, degree_name, institution_name, official_url, completion_date)
-       VALUES (?, ?, ?, ?, ?)`,
-            [
-                userId,
-                degreeName,
-                institutionName,
-                officialUrl || null,
-                completionDate || null
-            ]
-        );
-
+        await updateProfileCompletionStatus(userId);
         res.status(201).json({
             success: true,
             message: 'Degree added successfully',
@@ -246,7 +209,7 @@ exports.getDegrees = async function (req, res) {
             `SELECT * FROM degrees WHERE user_id = ?`,
             [userId]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.json({
             success: true,
             degrees: rows
@@ -281,7 +244,7 @@ exports.updateDegree = async function (req, res) {
                 userId
             ]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.json({
             success: true,
             message: 'Degree updated successfully'
@@ -306,7 +269,7 @@ exports.deleteDegree = async function (req, res) {
             `DELETE FROM degrees WHERE id = ? AND user_id = ?`,
             [degreeId, userId]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.json({
             success: true,
             message: 'Degree deleted successfully'
@@ -344,7 +307,7 @@ exports.addCertification = async function (req, res) {
                 completionDate || null
             ]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.status(201).json({
             success: true,
             message: 'Certification added successfully',
@@ -369,7 +332,7 @@ exports.getCertifications = async function (req, res) {
             `SELECT * FROM certifications WHERE user_id = ?`,
             [userId]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.json({
             success: true,
             certifications: rows
@@ -404,7 +367,7 @@ exports.updateCertification = async function (req, res) {
                 userId
             ]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.json({
             success: true,
             message: 'Certification updated successfully'
@@ -429,7 +392,7 @@ exports.deleteCertification = async function (req, res) {
             `DELETE FROM certifications WHERE id = ? AND user_id = ?`,
             [id, userId]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.json({
             success: true,
             message: 'Certification deleted successfully'
@@ -461,7 +424,7 @@ exports.addLicence = async function (req, res) {
        VALUES (?, ?, ?, ?, ?)`,
             [userId, licenceName, awardingBody, officialUrl || null, completionDate || null]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.status(201).json({
             success: true,
             message: 'Licence added successfully',
@@ -483,7 +446,7 @@ exports.getLicences = async function (req, res) {
             `SELECT * FROM licences WHERE user_id = ?`,
             [req.session.user.id]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.json({
             success: true,
             licences: rows
@@ -510,7 +473,7 @@ exports.updateLicence = async function (req, res) {
        WHERE id = ? AND user_id = ?`,
             [licenceName, awardingBody, officialUrl || null, completionDate || null, id, userId]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.json({
             success: true,
             message: 'Licence updated successfully'
@@ -531,7 +494,7 @@ exports.deleteLicence = async function (req, res) {
             `DELETE FROM licences WHERE id = ? AND user_id = ?`,
             [req.params.id, req.session.user.id]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.json({
             success: true,
             message: 'Licence deleted successfully'
@@ -562,7 +525,7 @@ exports.addCourse = async function (req, res) {
        VALUES (?, ?, ?, ?, ?)`,
             [userId, courseName, providerName, officialUrl || null, completionDate || null]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.status(201).json({
             success: true,
             message: 'Course added successfully',
@@ -584,7 +547,7 @@ exports.getCourses = async function (req, res) {
             `SELECT * FROM professional_courses WHERE user_id = ?`,
             [req.session.user.id]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.json({
             success: true,
             courses: rows
@@ -611,7 +574,7 @@ exports.updateCourse = async function (req, res) {
        WHERE id = ? AND user_id = ?`,
             [courseName, providerName, officialUrl || null, completionDate || null, id, userId]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.json({
             success: true,
             message: 'Course updated successfully'
@@ -632,7 +595,7 @@ exports.deleteCourse = async function (req, res) {
             `DELETE FROM professional_courses WHERE id = ? AND user_id = ?`,
             [req.params.id, req.session.user.id]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.json({
             success: true,
             message: 'Course deleted successfully'
@@ -663,7 +626,7 @@ exports.addEmployment = async function (req, res) {
        VALUES (?, ?, ?, ?, ?, ?)`,
             [userId, companyName, jobTitle, startDate || null, endDate || null, isCurrent ? 1 : 0]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.status(201).json({
             success: true,
             message: 'Employment history added successfully',
@@ -685,7 +648,7 @@ exports.getEmployment = async function (req, res) {
             `SELECT * FROM employment_history WHERE user_id = ?`,
             [req.session.user.id]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.json({
             success: true,
             employment: rows
@@ -712,7 +675,7 @@ exports.updateEmployment = async function (req, res) {
        WHERE id = ? AND user_id = ?`,
             [companyName, jobTitle, startDate || null, endDate || null, isCurrent ? 1 : 0, id, userId]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.json({
             success: true,
             message: 'Employment history updated successfully'
@@ -733,7 +696,7 @@ exports.deleteEmployment = async function (req, res) {
             `DELETE FROM employment_history WHERE id = ? AND user_id = ?`,
             [req.params.id, req.session.user.id]
         );
-
+        await updateProfileCompletionStatus(userId);
         res.json({
             success: true,
             message: 'Employment history deleted successfully'
@@ -779,10 +742,12 @@ exports.uploadProfileImage = async function (req, res) {
             [imagePath, userId]
         );
 
+        const completionStatus = await updateProfileCompletionStatus(userId);
         return res.json({
             success: true,
             message: 'Profile image uploaded successfully',
-            imagePath: imagePath
+            imagePath: imagePath,
+            completionStatus: completionStatus
         });
     } catch (err) {
         console.error('Upload profile image error:', err);
