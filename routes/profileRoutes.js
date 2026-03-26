@@ -3,6 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const profileController = require('../manual_controllers/profile/index');
+const upload = require('../middleware/uploadMiddleware');
 
 router.get('/me', profileController.getMyProfile);
 router.post('/me', profileController.createMyProfile);
@@ -32,5 +33,7 @@ router.post('/employment', profileController.addEmployment);
 router.get('/employment', profileController.getEmployment);
 router.put('/employment/:id', profileController.updateEmployment);
 router.delete('/employment/:id', profileController.deleteEmployment);
+
+router.post('/upload-image', upload.single('profileImage'), profileController.uploadProfileImage);
 
 module.exports = router;

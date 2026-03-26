@@ -27,6 +27,7 @@ app.response.message = function(msg){
 if (!module.parent) app.use(logger('dev'));
 
 // serve static files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // session support

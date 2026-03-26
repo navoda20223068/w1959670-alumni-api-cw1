@@ -744,3 +744,51 @@ exports.deleteEmployment = async function (req, res) {
     }
 };
 
+exports.uploadProfileImage = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({
+                error: 'Authentication required'
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                error: 'No image file uploaded'
+            });
+        }
+
+        const userId = req.session.user.id;
+        const imagePath = `/uploads/${req.file.filename}`;
+
+        const [existing] = await db.query(
+            'SELECT id FROM profiles WHERE user_id = ? LIMIT 1',
+            [userId]
+        );
+
+        if (existing.length === 0) {
+            return res.status(404).json({
+                error: 'Profile not found. Create profile first'
+            });
+        }
+
+        await db.query(
+            `UPDATE profiles
+       SET profile_image_path = ?
+       WHERE user_id = ?`,
+            [imagePath, userId]
+        );
+
+        return res.json({
+            success: true,
+            message: 'Profile image uploaded successfully',
+            imagePath: imagePath
+        });
+    } catch (err) {
+        console.error('Upload profile image error:', err);
+        return res.status(500).json({
+            error: 'Internal server error'
+        });
+    }
+};
+
