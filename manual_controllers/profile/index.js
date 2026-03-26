@@ -441,3 +441,306 @@ exports.deleteCertification = async function (req, res) {
     }
 };
 
+exports.addLicence = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const userId = req.session.user.id;
+        const { licenceName, awardingBody, officialUrl, completionDate } = req.body;
+
+        if (!licenceName || !awardingBody) {
+            return res.status(400).json({
+                error: 'licenceName and awardingBody are required'
+            });
+        }
+
+        const [result] = await db.query(
+            `INSERT INTO licences (user_id, licence_name, awarding_body, official_url, completion_date)
+       VALUES (?, ?, ?, ?, ?)`,
+            [userId, licenceName, awardingBody, officialUrl || null, completionDate || null]
+        );
+
+        res.status(201).json({
+            success: true,
+            message: 'Licence added successfully',
+            licenceId: result.insertId
+        });
+    } catch (err) {
+        console.error('Add licence error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.getLicences = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const [rows] = await db.query(
+            `SELECT * FROM licences WHERE user_id = ?`,
+            [req.session.user.id]
+        );
+
+        res.json({
+            success: true,
+            licences: rows
+        });
+    } catch (err) {
+        console.error('Get licences error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.updateLicence = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const userId = req.session.user.id;
+        const id = req.params.id;
+        const { licenceName, awardingBody, officialUrl, completionDate } = req.body;
+
+        await db.query(
+            `UPDATE licences
+       SET licence_name = ?, awarding_body = ?, official_url = ?, completion_date = ?
+       WHERE id = ? AND user_id = ?`,
+            [licenceName, awardingBody, officialUrl || null, completionDate || null, id, userId]
+        );
+
+        res.json({
+            success: true,
+            message: 'Licence updated successfully'
+        });
+    } catch (err) {
+        console.error('Update licence error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.deleteLicence = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        await db.query(
+            `DELETE FROM licences WHERE id = ? AND user_id = ?`,
+            [req.params.id, req.session.user.id]
+        );
+
+        res.json({
+            success: true,
+            message: 'Licence deleted successfully'
+        });
+    } catch (err) {
+        console.error('Delete licence error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.addCourse = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const userId = req.session.user.id;
+        const { courseName, providerName, officialUrl, completionDate } = req.body;
+
+        if (!courseName || !providerName) {
+            return res.status(400).json({
+                error: 'courseName and providerName are required'
+            });
+        }
+
+        const [result] = await db.query(
+            `INSERT INTO professional_courses (user_id, course_name, provider_name, official_url, completion_date)
+       VALUES (?, ?, ?, ?, ?)`,
+            [userId, courseName, providerName, officialUrl || null, completionDate || null]
+        );
+
+        res.status(201).json({
+            success: true,
+            message: 'Course added successfully',
+            courseId: result.insertId
+        });
+    } catch (err) {
+        console.error('Add course error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.getCourses = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const [rows] = await db.query(
+            `SELECT * FROM professional_courses WHERE user_id = ?`,
+            [req.session.user.id]
+        );
+
+        res.json({
+            success: true,
+            courses: rows
+        });
+    } catch (err) {
+        console.error('Get courses error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.updateCourse = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const userId = req.session.user.id;
+        const id = req.params.id;
+        const { courseName, providerName, officialUrl, completionDate } = req.body;
+
+        await db.query(
+            `UPDATE professional_courses
+       SET course_name = ?, provider_name = ?, official_url = ?, completion_date = ?
+       WHERE id = ? AND user_id = ?`,
+            [courseName, providerName, officialUrl || null, completionDate || null, id, userId]
+        );
+
+        res.json({
+            success: true,
+            message: 'Course updated successfully'
+        });
+    } catch (err) {
+        console.error('Update course error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.deleteCourse = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        await db.query(
+            `DELETE FROM professional_courses WHERE id = ? AND user_id = ?`,
+            [req.params.id, req.session.user.id]
+        );
+
+        res.json({
+            success: true,
+            message: 'Course deleted successfully'
+        });
+    } catch (err) {
+        console.error('Delete course error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.addEmployment = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const userId = req.session.user.id;
+        const { companyName, jobTitle, startDate, endDate, isCurrent } = req.body;
+
+        if (!companyName || !jobTitle) {
+            return res.status(400).json({
+                error: 'companyName and jobTitle are required'
+            });
+        }
+
+        const [result] = await db.query(
+            `INSERT INTO employment_history (user_id, company_name, job_title, start_date, end_date, is_current)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+            [userId, companyName, jobTitle, startDate || null, endDate || null, isCurrent ? 1 : 0]
+        );
+
+        res.status(201).json({
+            success: true,
+            message: 'Employment history added successfully',
+            employmentId: result.insertId
+        });
+    } catch (err) {
+        console.error('Add employment error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.getEmployment = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const [rows] = await db.query(
+            `SELECT * FROM employment_history WHERE user_id = ?`,
+            [req.session.user.id]
+        );
+
+        res.json({
+            success: true,
+            employment: rows
+        });
+    } catch (err) {
+        console.error('Get employment error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.updateEmployment = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const userId = req.session.user.id;
+        const id = req.params.id;
+        const { companyName, jobTitle, startDate, endDate, isCurrent } = req.body;
+
+        await db.query(
+            `UPDATE employment_history
+       SET company_name = ?, job_title = ?, start_date = ?, end_date = ?, is_current = ?
+       WHERE id = ? AND user_id = ?`,
+            [companyName, jobTitle, startDate || null, endDate || null, isCurrent ? 1 : 0, id, userId]
+        );
+
+        res.json({
+            success: true,
+            message: 'Employment history updated successfully'
+        });
+    } catch (err) {
+        console.error('Update employment error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.deleteEmployment = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        await db.query(
+            `DELETE FROM employment_history WHERE id = ? AND user_id = ?`,
+            [req.params.id, req.session.user.id]
+        );
+
+        res.json({
+            success: true,
+            message: 'Employment history deleted successfully'
+        });
+    } catch (err) {
+        console.error('Delete employment error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
