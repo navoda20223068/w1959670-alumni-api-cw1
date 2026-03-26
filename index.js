@@ -45,17 +45,30 @@ app.use(methodOverride('_method'));
 
 // expose the "messages" local variable when views are rendered
 app.use(function(req, res, next){
-  var msgs = req.session.messages || [];
+  var msgs = (req.session && req.session.messages) ? req.session.messages : [];
 
   res.locals.messages = msgs;
-  res.locals.hasMessages = !! msgs.length;
+  res.locals.hasMessages = !!msgs.length;
 
   next();
-  req.session.messages = [];
+
+  if (req.session) {
+    req.session.messages = [];
+  }
 });
 
 // load controllers
 require('./lib/boot')(app, { verbose: !module.parent });
+
+app.use(session({
+  resave: false,
+  saveUninitialized: false,
+  secret: process.env.SESSION_SECRET || 'some secret here'
+}));
+
+// manual auth routes
+const authRoutes = require('./routes/authRoutes');
+app.use('/auth', authRoutes);
 
 app.use(function(err, req, res, next){
   if (!module.parent) console.error(err.stack);
