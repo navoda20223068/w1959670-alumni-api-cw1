@@ -70,6 +70,9 @@ app.use(session({
 const authRoutes = require('./routes/authRoutes');
 app.use('/auth', authRoutes);
 
+const profileRoutes = require('./routes/profileRoutes');
+app.use('/profile', profileRoutes);
+
 app.use(function(err, req, res, next){
   if (!module.parent) console.error(err.stack);
   res.status(500).json({ error: 'Internal server error' });
