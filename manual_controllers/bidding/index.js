@@ -27,9 +27,12 @@ exports.placeBid = async function (req, res) {
             });
         }
 
-        // Make sure user has a profile first
+        // Make sure user has a profile
         const [profiles] = await db.query(
-            'SELECT id, completion_status FROM profiles WHERE user_id = ? LIMIT 1',
+            `SELECT id, completion_status
+             FROM profiles
+             WHERE user_id = ?
+             LIMIT 1`,
             [userId]
         );
 
@@ -39,16 +42,35 @@ exports.placeBid = async function (req, res) {
             });
         }
 
-        // require completed profile before bidding
+        // Require completed profile before bidding
         if (!profiles[0].completion_status) {
             return res.status(400).json({
                 error: 'Complete your profile before bidding'
             });
         }
 
-        // One bid per user per date
+        // Enforce monthly win limit (max 3 wins per calendar month)
+        const [winCountRows] = await db.query(
+            `SELECT COUNT(*) AS winCount
+             FROM appearance_history
+             WHERE user_id = ?
+               AND MONTH(featured_date) = MONTH(?)
+               AND YEAR(featured_date) = YEAR(?)`,
+            [userId, bidDate, bidDate]
+        );
+
+        if (winCountRows[0].winCount >= 3) {
+            return res.status(403).json({
+                error: 'Monthly win limit reached (max 3)'
+            });
+        }
+
+        // One bid per user per target date
         const [existingBid] = await db.query(
-            'SELECT id FROM bids WHERE user_id = ? AND bid_date = ? LIMIT 1',
+            `SELECT id
+             FROM bids
+             WHERE user_id = ? AND bid_date = ?
+             LIMIT 1`,
             [userId, bidDate]
         );
 
@@ -58,7 +80,7 @@ exports.placeBid = async function (req, res) {
             });
         }
 
-        // Insert the bid first
+        // Insert bid first as losing by default
         const [result] = await db.query(
             `INSERT INTO bids (user_id, bid_date, amount, status)
              VALUES (?, ?, ?, 'losing')`,
@@ -67,7 +89,7 @@ exports.placeBid = async function (req, res) {
 
         const bidId = result.insertId;
 
-        // Work out whether this new bid is currently winning
+        // Determine current top bid for that date
         const [topBidRows] = await db.query(
             `SELECT id, user_id, amount
              FROM bids
@@ -79,12 +101,15 @@ exports.placeBid = async function (req, res) {
 
         let myStatus = 'losing';
 
-        if (topBidRows.length > 0 && topBidRows[0].id === bidId) {
+        if (topBidRows.length > 0 && Number(topBidRows[0].id) === Number(bidId)) {
             myStatus = 'winning';
         }
 
+        // Update only this user's current bid status
         await db.query(
-            'UPDATE bids SET status = ? WHERE id = ?',
+            `UPDATE bids
+             SET status = ?
+             WHERE id = ?`,
             [myStatus, bidId]
         );
 
@@ -248,6 +273,64 @@ exports.getMyBidStatusForDate = async function (req, res) {
 
     } catch (err) {
         console.error('Get bid status error:', err);
+        return res.status(500).json({
+            error: 'Internal server error'
+        });
+    }
+};
+
+exports.finalizeWinner = async function (req, res) {
+    try {
+        const bidDate = req.params.date;
+
+        const [topBidRows] = await db.query(
+            `SELECT id, user_id, amount
+             FROM bids
+             WHERE bid_date = ?
+             ORDER BY amount DESC, created_at ASC
+             LIMIT 1`,
+            [bidDate]
+        );
+
+        if (topBidRows.length === 0) {
+            return res.status(404).json({
+                error: 'No bids found for this date'
+            });
+        }
+
+        const winningBid = topBidRows[0];
+
+        // Mark winner
+        await db.query(
+            `UPDATE bids
+             SET status = 'won'
+             WHERE id = ?`,
+            [winningBid.id]
+        );
+
+        // Mark losers
+        await db.query(
+            `UPDATE bids
+             SET status = 'lost'
+             WHERE bid_date = ? AND id != ?`,
+            [bidDate, winningBid.id]
+        );
+
+        // Save in appearance_history
+        await db.query(
+            `INSERT INTO appearance_history (user_id, featured_date, won_by_bid_id)
+             VALUES (?, ?, ?)`,
+            [winningBid.user_id, bidDate, winningBid.id]
+        );
+
+        return res.json({
+            success: true,
+            message: 'Winner finalized',
+            winningBid: winningBid
+        });
+
+    } catch (err) {
+        console.error('Finalize winner error:', err);
         return res.status(500).json({
             error: 'Internal server error'
         });
