@@ -13,6 +13,7 @@ var session = require('express-session');
 var methodOverride = require('method-override');
 
 var app = module.exports = express();
+const { startBiddingScheduler } = require('./scheduler/biddingScheduler');
 
 // define a custom res.message() method
 // which stores messages in the session
@@ -87,9 +88,9 @@ app.use(function(req, res, next){
   res.status(404).json({ error: 'Not found', url: req.originalUrl });
 });
 
-/* istanbul ignore next */
+startBiddingScheduler();
 if (!module.parent) {
-  console.log('DB_NAME:', process.env.DB_NAME); //log to check the .env file being read
+  console.log('DB_NAME:', process.env.DB_NAME);
   app.listen(process.env.PORT || 3000);
   console.log(`Express started on port ${process.env.PORT || 3000}`);
 }

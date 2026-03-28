@@ -2,6 +2,106 @@
 
 const db = require('../../db');
 
+async function finalizeWinnerForDate(bidDate) {
+
+    const [alreadyFinalized] = await db.query(
+        `SELECT id
+         FROM appearance_history
+         WHERE featured_date = ?
+         LIMIT 1`,
+        [bidDate]
+    );
+
+    if (alreadyFinalized.length > 0) {
+        throw new Error('Winner already finalized for this date');
+    }
+
+    const [topBidRows] = await db.query(
+        `SELECT id, user_id, amount
+         FROM bids
+         WHERE bid_date = ?
+           AND status != 'cancelled'
+         ORDER BY amount DESC, created_at ASC
+         LIMIT 1`,
+        [bidDate]
+    );
+
+    if (topBidRows.length === 0) {
+        throw new Error('No bids found for this date');
+    }
+
+    const winningBid = topBidRows[0];
+
+    // Count wins so far this month
+    const [winCountRows] = await db.query(
+        `SELECT COUNT(*) AS winCount
+         FROM appearance_history
+         WHERE user_id = ?
+           AND MONTH(featured_date) = MONTH(?)
+           AND YEAR(featured_date) = YEAR(?)`,
+        [winningBid.user_id, bidDate, bidDate]
+    );
+
+    const currentWinCount = Number(winCountRows[0].winCount);
+
+    let eventBonusUsed = 0;
+
+    if (currentWinCount >= 3) {
+
+        const [bonusRows] = await db.query(
+            `SELECT id
+             FROM alumni_event_bonus
+             WHERE user_id = ?
+               AND event_month = MONTH(?)
+               AND event_year = YEAR(?)
+               AND bonus_granted = 1
+               AND bonus_used = 0
+             LIMIT 1`,
+            [winningBid.user_id, bidDate, bidDate]
+        );
+
+        if (bonusRows.length === 0) {
+            throw new Error('Winner exceeds monthly limit and has no event bonus');
+        }
+
+        eventBonusUsed = 1;
+
+        await db.query(
+            `UPDATE alumni_event_bonus
+             SET bonus_used = 1
+             WHERE id = ?`,
+            [bonusRows[0].id]
+        );
+    }
+
+    // Mark winner
+    await db.query(
+        `UPDATE bids
+         SET status = 'won'
+         WHERE id = ?`,
+        [winningBid.id]
+    );
+
+    // Mark losers
+    await db.query(
+        `UPDATE bids
+         SET status = 'lost'
+         WHERE bid_date = ?
+           AND id != ?
+           AND status != 'cancelled'`,
+        [bidDate, winningBid.id]
+    );
+
+    // Save appearance
+    await db.query(
+        `INSERT INTO appearance_history (user_id, featured_date, won_by_bid_id, event_bonus_used)
+         VALUES (?, ?, ?, ?)`,
+        [winningBid.user_id, bidDate, winningBid.id, eventBonusUsed]
+    );
+
+    return winningBid;
+}
+
 exports.placeBid = async function (req, res) {
     try {
         if (!req.session || !req.session.user) {
@@ -11,7 +111,7 @@ exports.placeBid = async function (req, res) {
         }
 
         const userId = req.session.user.id;
-        const { bidDate, amount } = req.body;
+        const {bidDate, amount} = req.body;
 
         if (!bidDate || amount === undefined || amount === null) {
             return res.status(400).json({
@@ -27,9 +127,26 @@ exports.placeBid = async function (req, res) {
             });
         }
 
-        // Make sure user has a profile
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const inputDate = new Date(bidDate);
+
+        if (isNaN(inputDate.getTime())) {
+            return res.status(400).json({
+                error: 'Invalid bidDate format'
+            });
+        }
+
+        if (inputDate < today) {
+            return res.status(400).json({
+                error: 'Cannot bid for past dates'
+            });
+        }
+
+        // Check profile exists and is complete
         const [profiles] = await db.query(
-            `SELECT id, completion_status
+            `SELECT completion_status
              FROM profiles
              WHERE user_id = ?
              LIMIT 1`,
@@ -42,14 +159,13 @@ exports.placeBid = async function (req, res) {
             });
         }
 
-        // Require completed profile before bidding
         if (!profiles[0].completion_status) {
             return res.status(400).json({
                 error: 'Complete your profile before bidding'
             });
         }
 
-        // Enforce monthly win limit (max 3 wins per calendar month)
+        // Check wins in current month
         const [winCountRows] = await db.query(
             `SELECT COUNT(*) AS winCount
              FROM appearance_history
@@ -59,13 +175,35 @@ exports.placeBid = async function (req, res) {
             [userId, bidDate, bidDate]
         );
 
-        if (winCountRows[0].winCount >= 3) {
+        const winCount = Number(winCountRows[0].winCount);
+
+        if (winCount >= 4) {
             return res.status(403).json({
-                error: 'Monthly win limit reached (max 3)'
+                error: 'Monthly win limit reached (max 4)'
             });
         }
 
-        // One bid per user per target date
+        if (winCount === 3) {
+            const [bonusRows] = await db.query(
+                `SELECT id
+                 FROM alumni_event_bonus
+                 WHERE user_id = ?
+                   AND event_month = MONTH(?)
+                   AND event_year = YEAR(?)
+                   AND bonus_granted = 1
+                   AND bonus_used = 0
+                 LIMIT 1`,
+                [userId, bidDate, bidDate]
+            );
+
+            if (bonusRows.length === 0) {
+                return res.status(403).json({
+                    error: 'Monthly limit reached (no event bonus available)'
+                });
+            }
+        }
+
+        // Prevent duplicate bid for same date
         const [existingBid] = await db.query(
             `SELECT id
              FROM bids
@@ -76,11 +214,11 @@ exports.placeBid = async function (req, res) {
 
         if (existingBid.length > 0) {
             return res.status(409).json({
-                error: 'You already have a bid for this date. Use the increase bid endpoint instead.'
+                error: 'You already have a bid for this date. Use increase endpoint.'
             });
         }
 
-        // Insert bid first as losing by default
+        // Insert bid
         const [result] = await db.query(
             `INSERT INTO bids (user_id, bid_date, amount, status)
              VALUES (?, ?, ?, 'losing')`,
@@ -89,34 +227,31 @@ exports.placeBid = async function (req, res) {
 
         const bidId = result.insertId;
 
-        // Determine current top bid for that date
+        // Determine current status
         const [topBidRows] = await db.query(
-            `SELECT id, user_id, amount
+            `SELECT id
              FROM bids
              WHERE bid_date = ?
+               AND status != 'cancelled'
              ORDER BY amount DESC, created_at ASC
              LIMIT 1`,
             [bidDate]
         );
 
-        let myStatus = 'losing';
+        const myStatus =
+            topBidRows.length > 0 && Number(topBidRows[0].id) === bidId
+                ? 'winning'
+                : 'losing';
 
-        if (topBidRows.length > 0 && Number(topBidRows[0].id) === Number(bidId)) {
-            myStatus = 'winning';
-        }
-
-        // Update only this user's current bid status
         await db.query(
-            `UPDATE bids
-             SET status = ?
-             WHERE id = ?`,
+            `UPDATE bids SET status = ? WHERE id = ?`,
             [myStatus, bidId]
         );
 
         return res.status(201).json({
             success: true,
             message: 'Bid placed successfully',
-            bidId: bidId,
+            bidId,
             status: myStatus
         });
 
@@ -138,7 +273,7 @@ exports.increaseBid = async function (req, res) {
 
         const userId = req.session.user.id;
         const bidId = req.params.id;
-        const { amount } = req.body;
+        const {amount} = req.body;
 
         const numericAmount = Number(amount);
 
@@ -178,10 +313,11 @@ exports.increaseBid = async function (req, res) {
         // Recalculate current top bid for that date
         const [topBidRows] = await db.query(
             `SELECT id
-             FROM bids
-             WHERE bid_date = ?
-             ORDER BY amount DESC, created_at ASC
-             LIMIT 1`,
+            FROM bids
+            WHERE bid_date = ?
+            AND status != 'cancelled'
+            ORDER BY amount DESC, created_at ASC
+            LIMIT 1`,
             [bid.bid_date]
         );
 
@@ -283,45 +419,7 @@ exports.finalizeWinner = async function (req, res) {
     try {
         const bidDate = req.params.date;
 
-        const [topBidRows] = await db.query(
-            `SELECT id, user_id, amount
-             FROM bids
-             WHERE bid_date = ?
-             ORDER BY amount DESC, created_at ASC
-             LIMIT 1`,
-            [bidDate]
-        );
-
-        if (topBidRows.length === 0) {
-            return res.status(404).json({
-                error: 'No bids found for this date'
-            });
-        }
-
-        const winningBid = topBidRows[0];
-
-        // Mark winner
-        await db.query(
-            `UPDATE bids
-             SET status = 'won'
-             WHERE id = ?`,
-            [winningBid.id]
-        );
-
-        // Mark losers
-        await db.query(
-            `UPDATE bids
-             SET status = 'lost'
-             WHERE bid_date = ? AND id != ?`,
-            [bidDate, winningBid.id]
-        );
-
-        // Save in appearance_history
-        await db.query(
-            `INSERT INTO appearance_history (user_id, featured_date, won_by_bid_id)
-             VALUES (?, ?, ?)`,
-            [winningBid.user_id, bidDate, winningBid.id]
-        );
+        const winningBid = await finalizeWinnerForDate(bidDate);
 
         return res.json({
             success: true,
@@ -331,6 +429,75 @@ exports.finalizeWinner = async function (req, res) {
 
     } catch (err) {
         console.error('Finalize winner error:', err);
+
+        if (err.message === 'No bids found for this date') {
+            return res.status(404).json({error: err.message});
+        }
+
+        if (err.message === 'Winner already finalized for this date') {
+            return res.status(409).json({error: err.message});
+        }
+
+        return res.status(500).json({
+            error: 'Internal server error'
+        });
+    }
+};
+
+exports.cancelBid = async function (req, res) {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({
+                error: 'Authentication required'
+            });
+        }
+
+        const userId = req.session.user.id;
+        const bidId = req.params.id;
+
+        const [rows] = await db.query(
+            `SELECT id, user_id, bid_date, status
+             FROM bids
+             WHERE id = ? AND user_id = ?
+             LIMIT 1`,
+            [bidId, userId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                error: 'Bid not found'
+            });
+        }
+
+        const bid = rows[0];
+
+        if (bid.status === 'won' || bid.status === 'lost') {
+            return res.status(400).json({
+                error: 'Finalized bids cannot be cancelled'
+            });
+        }
+
+        if (bid.status === 'cancelled') {
+            return res.status(400).json({
+                error: 'Bid is already cancelled'
+            });
+        }
+
+        await db.query(
+            `UPDATE bids
+             SET status = 'cancelled'
+             WHERE id = ?`,
+            [bidId]
+        );
+
+        return res.json({
+            success: true,
+            message: 'Bid cancelled successfully',
+            bidId: Number(bidId)
+        });
+
+    } catch (err) {
+        console.error('Cancel bid error:', err);
         return res.status(500).json({
             error: 'Internal server error'
         });

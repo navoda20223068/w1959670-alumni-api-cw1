@@ -9,5 +9,6 @@ router.put('/increase/:id', biddingController.increaseBid);
 router.get('/my-bids', biddingController.getMyBids);
 router.get('/status/:date', biddingController.getMyBidStatusForDate);
 router.post('/finalize/:date', biddingController.finalizeWinner);
+router.post('/cancel/:id', biddingController.cancelBid);
 
 module.exports = router;
