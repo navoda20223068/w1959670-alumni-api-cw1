@@ -442,9 +442,10 @@ exports.getLicences = async function (req, res) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
+        const userId = req.session.user.id;
         const [rows] = await db.query(
             `SELECT * FROM licences WHERE user_id = ?`,
-            [req.session.user.id]
+            [userId]
         );
         await updateProfileCompletionStatus(userId);
         res.json({
@@ -490,9 +491,10 @@ exports.deleteLicence = async function (req, res) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
+        const userId = req.session.user.id;
         await db.query(
             `DELETE FROM licences WHERE id = ? AND user_id = ?`,
-            [req.params.id, req.session.user.id]
+            [req.params.id, userId]
         );
         await updateProfileCompletionStatus(userId);
         res.json({
@@ -543,9 +545,10 @@ exports.getCourses = async function (req, res) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
+        const userId = req.session.user.id;
         const [rows] = await db.query(
             `SELECT * FROM professional_courses WHERE user_id = ?`,
-            [req.session.user.id]
+            [userId]
         );
         await updateProfileCompletionStatus(userId);
         res.json({
@@ -591,9 +594,10 @@ exports.deleteCourse = async function (req, res) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
+        const userId = req.session.user.id;
         await db.query(
             `DELETE FROM professional_courses WHERE id = ? AND user_id = ?`,
-            [req.params.id, req.session.user.id]
+            [req.params.id, userId]
         );
         await updateProfileCompletionStatus(userId);
         res.json({
@@ -644,9 +648,10 @@ exports.getEmployment = async function (req, res) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
+        const userId = req.session.user.id;
         const [rows] = await db.query(
             `SELECT * FROM employment_history WHERE user_id = ?`,
-            [req.session.user.id]
+            [userId]
         );
         await updateProfileCompletionStatus(userId);
         res.json({
@@ -692,9 +697,10 @@ exports.deleteEmployment = async function (req, res) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
+        const userId = req.session.user.id;
         await db.query(
             `DELETE FROM employment_history WHERE id = ? AND user_id = ?`,
-            [req.params.id, req.session.user.id]
+            [req.params.id, userId]
         );
         await updateProfileCompletionStatus(userId);
         res.json({
