@@ -526,12 +526,11 @@ exports.cancelBid = async function (req, res) {
             [bidId]
         );
 
-        // Reset all remaining active bids for the same date to losing
         await db.query(
             `UPDATE bids
-             SET status = 'losing'
-             WHERE bid_date = ?
-               AND status != 'cancelled'`,
+            SET status = 'losing'
+            WHERE bid_date = ?
+                AND status NOT IN ('won', 'lost', 'cancelled')`,
             [bid.bid_date]
         );
 
@@ -541,6 +540,7 @@ exports.cancelBid = async function (req, res) {
              FROM bids
              WHERE bid_date = ?
                AND status != 'cancelled'
+               AND status NOT IN ('won', 'lost', 'cancelled')
              ORDER BY amount DESC, created_at ASC
              LIMIT 1`,
             [bid.bid_date]
