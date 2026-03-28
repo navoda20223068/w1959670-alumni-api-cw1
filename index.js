@@ -62,12 +62,6 @@ app.use(function(req, res, next){
 // load controllers
 require('./lib/boot')(app, { verbose: !module.parent });
 
-app.use(session({
-  resave: false,
-  saveUninitialized: false,
-  secret: process.env.SESSION_SECRET || 'some secret here'
-}));
-
 // manual auth routes
 const authRoutes = require('./routes/authRoutes');
 app.use('/auth', authRoutes);
@@ -81,14 +75,17 @@ app.use('/bidding', biddingRoutes);
 const apiKeyRoutes = require('./routes/apiKeyRoutes');
 app.use('/developer', apiKeyRoutes);
 
-app.use(function(err, req, res, next){
-  if (!module.parent) console.error(err.stack);
-  res.status(500).json({ error: 'Internal server error' });
-});
+const publicApiRoutes = require('./routes/publicApiRoutes');
+app.use('/api', publicApiRoutes);
 
 // assume 404 since no middleware responded
 app.use(function(req, res, next){
   res.status(404).json({ error: 'Not found', url: req.originalUrl });
+});
+
+app.use(function(err, req, res, next){
+  if (!module.parent) console.error(err.stack);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 startBiddingScheduler();
