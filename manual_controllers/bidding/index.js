@@ -111,7 +111,7 @@ exports.placeBid = async function (req, res) {
         }
 
         const userId = req.session.user.id;
-        const {bidDate, amount} = req.body;
+        const { bidDate, amount } = req.body;
 
         if (!bidDate || amount === undefined || amount === null) {
             return res.status(400).json({
@@ -144,7 +144,6 @@ exports.placeBid = async function (req, res) {
             });
         }
 
-        // Check profile exists and is complete
         const [profiles] = await db.query(
             `SELECT completion_status
              FROM profiles
@@ -165,7 +164,6 @@ exports.placeBid = async function (req, res) {
             });
         }
 
-        // Check wins in current month
         const [winCountRows] = await db.query(
             `SELECT COUNT(*) AS winCount
              FROM appearance_history
@@ -203,7 +201,6 @@ exports.placeBid = async function (req, res) {
             }
         }
 
-        // Prevent duplicate bid for same date
         const [existingBid] = await db.query(
             `SELECT id
              FROM bids
@@ -218,7 +215,6 @@ exports.placeBid = async function (req, res) {
             });
         }
 
-        // Insert bid
         const [result] = await db.query(
             `INSERT INTO bids (user_id, bid_date, amount, status)
              VALUES (?, ?, ?, 'losing')`,
@@ -227,26 +223,42 @@ exports.placeBid = async function (req, res) {
 
         const bidId = result.insertId;
 
-        // Determine current status
+        // Reset all active bids for that date to losing
+        await db.query(
+            `UPDATE bids
+             SET status = 'losing'
+             WHERE bid_date = ?
+               AND status != 'cancelled'
+               AND status NOT IN ('won', 'lost')`,
+            [bidDate]
+        );
+
+        // Promote top active bid to winning
         const [topBidRows] = await db.query(
             `SELECT id
              FROM bids
              WHERE bid_date = ?
                AND status != 'cancelled'
+               AND status NOT IN ('won', 'lost')
              ORDER BY amount DESC, created_at ASC
              LIMIT 1`,
             [bidDate]
         );
 
-        const myStatus =
-            topBidRows.length > 0 && Number(topBidRows[0].id) === bidId
-                ? 'winning'
-                : 'losing';
+        let myStatus = 'losing';
 
-        await db.query(
-            `UPDATE bids SET status = ? WHERE id = ?`,
-            [myStatus, bidId]
-        );
+        if (topBidRows.length > 0) {
+            await db.query(
+                `UPDATE bids
+                 SET status = 'winning'
+                 WHERE id = ?`,
+                [topBidRows[0].id]
+            );
+
+            if (Number(topBidRows[0].id) === Number(bidId)) {
+                myStatus = 'winning';
+            }
+        }
 
         return res.status(201).json({
             success: true,
@@ -273,7 +285,7 @@ exports.increaseBid = async function (req, res) {
 
         const userId = req.session.user.id;
         const bidId = req.params.id;
-        const {amount} = req.body;
+        const { amount } = req.body;
 
         const numericAmount = Number(amount);
 
@@ -284,7 +296,7 @@ exports.increaseBid = async function (req, res) {
         }
 
         const [rows] = await db.query(
-            `SELECT id, user_id, bid_date, amount
+            `SELECT id, user_id, bid_date, amount, status
              FROM bids
              WHERE id = ? AND user_id = ?
              LIMIT 1`,
@@ -299,6 +311,12 @@ exports.increaseBid = async function (req, res) {
 
         const bid = rows[0];
 
+        if (bid.status === 'cancelled' || bid.status === 'won' || bid.status === 'lost') {
+            return res.status(400).json({
+                error: 'This bid cannot be increased'
+            });
+        }
+
         if (numericAmount <= Number(bid.amount)) {
             return res.status(400).json({
                 error: 'New amount must be greater than your current bid'
@@ -306,30 +324,48 @@ exports.increaseBid = async function (req, res) {
         }
 
         await db.query(
-            'UPDATE bids SET amount = ? WHERE id = ?',
+            `UPDATE bids
+             SET amount = ?
+             WHERE id = ?`,
             [numericAmount, bidId]
         );
 
-        // Recalculate current top bid for that date
-        const [topBidRows] = await db.query(
-            `SELECT id
-            FROM bids
-            WHERE bid_date = ?
-            AND status != 'cancelled'
-            ORDER BY amount DESC, created_at ASC
-            LIMIT 1`,
+        // Reset all active bids for that date to losing
+        await db.query(
+            `UPDATE bids
+             SET status = 'losing'
+             WHERE bid_date = ?
+               AND status != 'cancelled'
+               AND status NOT IN ('won', 'lost')`,
             [bid.bid_date]
         );
 
-        const myStatus =
-            topBidRows.length > 0 && Number(topBidRows[0].id) === Number(bidId)
-                ? 'winning'
-                : 'losing';
-
-        await db.query(
-            'UPDATE bids SET status = ? WHERE id = ?',
-            [myStatus, bidId]
+        // Promote top active bid to winning
+        const [topBidRows] = await db.query(
+            `SELECT id
+             FROM bids
+             WHERE bid_date = ?
+               AND status != 'cancelled'
+               AND status NOT IN ('won', 'lost')
+             ORDER BY amount DESC, created_at ASC
+             LIMIT 1`,
+            [bid.bid_date]
         );
+
+        let myStatus = 'losing';
+
+        if (topBidRows.length > 0) {
+            await db.query(
+                `UPDATE bids
+                 SET status = 'winning'
+                 WHERE id = ?`,
+                [topBidRows[0].id]
+            );
+
+            if (Number(topBidRows[0].id) === Number(bidId)) {
+                myStatus = 'winning';
+            }
+        }
 
         return res.json({
             success: true,
@@ -389,7 +425,7 @@ exports.getMyBidStatusForDate = async function (req, res) {
         const bidDate = req.params.date;
 
         const [rows] = await db.query(
-            `SELECT id, bid_date, amount, status
+            `SELECT id, bid_date, status
              FROM bids
              WHERE user_id = ? AND bid_date = ?
              LIMIT 1`,
@@ -489,6 +525,35 @@ exports.cancelBid = async function (req, res) {
              WHERE id = ?`,
             [bidId]
         );
+
+        // Reset all remaining active bids for the same date to losing
+        await db.query(
+            `UPDATE bids
+             SET status = 'losing'
+             WHERE bid_date = ?
+               AND status != 'cancelled'`,
+            [bid.bid_date]
+        );
+
+        // Promote top remaining active bid to winning
+        const [topBidRows] = await db.query(
+            `SELECT id
+             FROM bids
+             WHERE bid_date = ?
+               AND status != 'cancelled'
+             ORDER BY amount DESC, created_at ASC
+             LIMIT 1`,
+            [bid.bid_date]
+        );
+
+        if (topBidRows.length > 0) {
+            await db.query(
+                `UPDATE bids
+                 SET status = 'winning'
+                 WHERE id = ?`,
+                [topBidRows[0].id]
+            );
+        }
 
         return res.json({
             success: true,
