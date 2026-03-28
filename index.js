@@ -74,6 +74,9 @@ app.use('/auth', authRoutes);
 const profileRoutes = require('./routes/profileRoutes');
 app.use('/profile', profileRoutes);
 
+const biddingRoutes = require('./routes/biddingRoutes');
+app.use('/bidding', biddingRoutes);
+
 app.use(function(err, req, res, next){
   if (!module.parent) console.error(err.stack);
   res.status(500).json({ error: 'Internal server error' });

@@ -6,6 +6,6 @@ exports.prefix = '/bidding';
 exports.index = function (req, res) {
     res.json({
         module: 'bidding',
-        message: 'Bidding module ready'
+        message: 'Legacy bidding controller placeholder'
     });
 };
