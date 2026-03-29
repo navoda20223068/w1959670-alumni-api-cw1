@@ -3,6 +3,7 @@
 const db = require('../../db');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 
 // POST /auth_manual/register
 exports.register = async function (req, res) {
@@ -145,6 +146,7 @@ exports.verifyEmail = async function (req, res) {
 };
 
 // POST /auth_manual/login
+// POST /auth/login
 exports.login = async function (req, res) {
     try {
         const { email, password } = req.body;
@@ -159,9 +161,9 @@ exports.login = async function (req, res) {
 
         const [rows] = await db.query(
             `SELECT id, university_email, password_hash, email_verified, role
-       FROM users
-       WHERE university_email = ?
-       LIMIT 1`,
+             FROM users
+             WHERE university_email = ?
+             LIMIT 1`,
             [cleanEmail]
         );
 
@@ -187,16 +189,28 @@ exports.login = async function (req, res) {
             });
         }
 
-        req.session.user = {
-            id: user.id,
-            email: user.university_email,
-            role: user.role
-        };
+        const token = jwt.sign(
+            {
+                sub: user.id,
+                email: user.university_email,
+                role: user.role
+            },
+            process.env.JWT_SECRET,
+            {
+                algorithm: 'HS256',
+                expiresIn: process.env.JWT_EXPIRES_IN || '1h'
+            }
+        );
 
         return res.json({
             success: true,
             message: 'Login successful',
-            user: req.session.user
+            token: token,
+            user: {
+                id: user.id,
+                email: user.university_email,
+                role: user.role
+            }
         });
     } catch (err) {
         console.error('Login error:', err);
@@ -206,27 +220,12 @@ exports.login = async function (req, res) {
     }
 };
 
+// POST /auth/logout
 exports.logout = async function (req, res) {
     try {
-        if (!req.session) {
-            return res.status(400).json({
-                error: 'No active session found'
-            });
-        }
-
-        console.log('Logout session:', req.session);
-        console.log('Logout cookies:', req.headers.cookie);
-        req.session.destroy(function (err) {
-            if (err) {
-                return res.status(500).json({
-                    error: 'Logout failed'
-                });
-            }
-
-            return res.json({
-                success: true,
-                message: 'Logout successful'
-            });
+        return res.json({
+            success: true,
+            message: 'Logout successful. Remove the token on the client side.'
         });
     } catch (err) {
         console.error('Logout error:', err);
@@ -236,21 +235,15 @@ exports.logout = async function (req, res) {
     }
 };
 
-// GET /auth_manual/check
+// GET /auth/check
 exports.checkAuth = async function (req, res) {
     try {
-        if (!req.session.user) {
-            return res.status(401).json({
-                authenticated: false
-            });
-        }
-
         return res.json({
             authenticated: true,
-            user: req.session.user
+            user: req.user
         });
     } catch (err) {
-        console.error('Check auth_manual error:', err);
+        console.error('Check auth error:', err);
         return res.status(500).json({
             error: 'Internal server error'
         });

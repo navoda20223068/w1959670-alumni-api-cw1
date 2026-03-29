@@ -5,13 +5,13 @@ const crypto = require('crypto');
 
 exports.createClient = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({
                 error: 'Authentication required'
             });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const { clientName } = req.body;
 
         if (!clientName || !String(clientName).trim()) {
@@ -42,13 +42,13 @@ exports.createClient = async function (req, res) {
 
 exports.listClients = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({
                 error: 'Authentication required'
             });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
 
         const [rows] = await db.query(
             `SELECT id, client_name, status, created_at
@@ -73,13 +73,13 @@ exports.listClients = async function (req, res) {
 
 exports.createApiKey = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({
                 error: 'Authentication required'
             });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const { clientId, scopes, expiresAt } = req.body;
 
         if (!clientId) {
@@ -88,7 +88,6 @@ exports.createApiKey = async function (req, res) {
             });
         }
 
-        // Confirm client belongs to this user
         const [clients] = await db.query(
             `SELECT id
              FROM api_clients
@@ -103,10 +102,7 @@ exports.createApiKey = async function (req, res) {
             });
         }
 
-        // Generate raw key
         const rawKey = crypto.randomBytes(32).toString('hex');
-
-        // Hash key for DB storage
         const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
 
         const [result] = await db.query(
@@ -137,13 +133,13 @@ exports.createApiKey = async function (req, res) {
 
 exports.listApiKeys = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({
                 error: 'Authentication required'
             });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
 
         const [rows] = await db.query(
             `SELECT ak.id, ak.client_id, ac.client_name, ak.scopes, ak.expires_at, ak.revoked_at, ak.created_at
@@ -169,13 +165,13 @@ exports.listApiKeys = async function (req, res) {
 
 exports.revokeApiKey = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({
                 error: 'Authentication required'
             });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const apiKeyId = req.params.id;
 
         const [rows] = await db.query(

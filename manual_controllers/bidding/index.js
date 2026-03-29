@@ -3,7 +3,6 @@
 const db = require('../../db');
 
 async function finalizeWinnerForDate(bidDate) {
-
     const [alreadyFinalized] = await db.query(
         `SELECT id
          FROM appearance_history
@@ -32,7 +31,6 @@ async function finalizeWinnerForDate(bidDate) {
 
     const winningBid = topBidRows[0];
 
-    // Count wins so far this month
     const [winCountRows] = await db.query(
         `SELECT COUNT(*) AS winCount
          FROM appearance_history
@@ -43,11 +41,9 @@ async function finalizeWinnerForDate(bidDate) {
     );
 
     const currentWinCount = Number(winCountRows[0].winCount);
-
     let eventBonusUsed = 0;
 
     if (currentWinCount >= 3) {
-
         const [bonusRows] = await db.query(
             `SELECT id
              FROM alumni_event_bonus
@@ -74,7 +70,6 @@ async function finalizeWinnerForDate(bidDate) {
         );
     }
 
-    // Mark winner
     await db.query(
         `UPDATE bids
          SET status = 'won'
@@ -82,7 +77,6 @@ async function finalizeWinnerForDate(bidDate) {
         [winningBid.id]
     );
 
-    // Mark losers
     await db.query(
         `UPDATE bids
          SET status = 'lost'
@@ -92,7 +86,6 @@ async function finalizeWinnerForDate(bidDate) {
         [bidDate, winningBid.id]
     );
 
-    // Save appearance
     await db.query(
         `INSERT INTO appearance_history (user_id, featured_date, won_by_bid_id, event_bonus_used)
          VALUES (?, ?, ?, ?)`,
@@ -104,13 +97,13 @@ async function finalizeWinnerForDate(bidDate) {
 
 exports.placeBid = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({
                 error: 'Authentication required'
             });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const { bidDate, amount } = req.body;
 
         if (!bidDate || amount === undefined || amount === null) {
@@ -223,7 +216,6 @@ exports.placeBid = async function (req, res) {
 
         const bidId = result.insertId;
 
-        // Reset all active bids for that date to losing
         await db.query(
             `UPDATE bids
              SET status = 'losing'
@@ -233,7 +225,6 @@ exports.placeBid = async function (req, res) {
             [bidDate]
         );
 
-        // Promote top active bid to winning
         const [topBidRows] = await db.query(
             `SELECT id
              FROM bids
@@ -277,13 +268,13 @@ exports.placeBid = async function (req, res) {
 
 exports.increaseBid = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({
                 error: 'Authentication required'
             });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const bidId = req.params.id;
         const { amount } = req.body;
 
@@ -330,7 +321,6 @@ exports.increaseBid = async function (req, res) {
             [numericAmount, bidId]
         );
 
-        // Reset all active bids for that date to losing
         await db.query(
             `UPDATE bids
              SET status = 'losing'
@@ -340,7 +330,6 @@ exports.increaseBid = async function (req, res) {
             [bid.bid_date]
         );
 
-        // Promote top active bid to winning
         const [topBidRows] = await db.query(
             `SELECT id
              FROM bids
@@ -384,13 +373,13 @@ exports.increaseBid = async function (req, res) {
 
 exports.getMyBids = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({
                 error: 'Authentication required'
             });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
 
         const [rows] = await db.query(
             `SELECT id, bid_date, amount, status, created_at, updated_at
@@ -415,13 +404,13 @@ exports.getMyBids = async function (req, res) {
 
 exports.getMyBidStatusForDate = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({
                 error: 'Authentication required'
             });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const bidDate = req.params.date;
 
         const [rows] = await db.query(
@@ -467,11 +456,15 @@ exports.finalizeWinner = async function (req, res) {
         console.error('Finalize winner error:', err);
 
         if (err.message === 'No bids found for this date') {
-            return res.status(404).json({error: err.message});
+            return res.status(404).json({ error: err.message });
         }
 
         if (err.message === 'Winner already finalized for this date') {
-            return res.status(409).json({error: err.message});
+            return res.status(409).json({ error: err.message });
+        }
+
+        if (err.message === 'Winner exceeds monthly limit and has no event bonus') {
+            return res.status(403).json({ error: err.message });
         }
 
         return res.status(500).json({
@@ -482,13 +475,13 @@ exports.finalizeWinner = async function (req, res) {
 
 exports.cancelBid = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({
                 error: 'Authentication required'
             });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const bidId = req.params.id;
 
         const [rows] = await db.query(
@@ -528,18 +521,16 @@ exports.cancelBid = async function (req, res) {
 
         await db.query(
             `UPDATE bids
-            SET status = 'losing'
-            WHERE bid_date = ?
-                AND status NOT IN ('won', 'lost', 'cancelled')`,
+             SET status = 'losing'
+             WHERE bid_date = ?
+               AND status NOT IN ('won', 'lost', 'cancelled')`,
             [bid.bid_date]
         );
 
-        // Promote top remaining active bid to winning
         const [topBidRows] = await db.query(
             `SELECT id
              FROM bids
              WHERE bid_date = ?
-               AND status != 'cancelled'
                AND status NOT IN ('won', 'lost', 'cancelled')
              ORDER BY amount DESC, created_at ASC
              LIMIT 1`,

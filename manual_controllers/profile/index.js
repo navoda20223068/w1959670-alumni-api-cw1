@@ -6,13 +6,13 @@ const { updateProfileCompletionStatus } = require('./profileCompletion');
 
 exports.getMyProfile = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({
                 error: 'Authentication required'
             });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
 
         const [rows] = await db.query(
             `SELECT id, user_id, first_name, last_name, biography, linkedin_url, profile_image_path, completion_status, created_at, updated_at
@@ -42,13 +42,13 @@ exports.getMyProfile = async function (req, res) {
 
 exports.createMyProfile = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({
                 error: 'Authentication required'
             });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const { firstName, lastName, biography, linkedinUrl } = req.body;
 
         if (!firstName || !lastName) {
@@ -104,13 +104,13 @@ exports.createMyProfile = async function (req, res) {
 
 exports.updateMyProfile = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({
                 error: 'Authentication required'
             });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const { firstName, lastName, biography, linkedinUrl } = req.body;
 
         const [existing] = await db.query(
@@ -160,11 +160,11 @@ exports.updateMyProfile = async function (req, res) {
 
 exports.addDegree = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const { degreeName, institutionName, officialUrl, completionDate } = req.body;
 
         if (!degreeName || !institutionName) {
@@ -199,11 +199,11 @@ exports.addDegree = async function (req, res) {
 
 exports.getDegrees = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
 
         const [rows] = await db.query(
             `SELECT * FROM degrees WHERE user_id = ?`,
@@ -223,11 +223,11 @@ exports.getDegrees = async function (req, res) {
 
 exports.updateDegree = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const degreeId = req.params.id;
         const { degreeName, institutionName, officialUrl, completionDate } = req.body;
 
@@ -258,11 +258,11 @@ exports.updateDegree = async function (req, res) {
 
 exports.deleteDegree = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const degreeId = req.params.id;
 
         await db.query(
@@ -283,11 +283,11 @@ exports.deleteDegree = async function (req, res) {
 
 exports.addCertification = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const { certificationName, providerName, officialUrl, completionDate } = req.body;
 
         if (!certificationName || !providerName) {
@@ -322,11 +322,11 @@ exports.addCertification = async function (req, res) {
 
 exports.getCertifications = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
 
         const [rows] = await db.query(
             `SELECT * FROM certifications WHERE user_id = ?`,
@@ -346,11 +346,11 @@ exports.getCertifications = async function (req, res) {
 
 exports.updateCertification = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const id = req.params.id;
         const { certificationName, providerName, officialUrl, completionDate } = req.body;
 
@@ -381,11 +381,11 @@ exports.updateCertification = async function (req, res) {
 
 exports.deleteCertification = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const id = req.params.id;
 
         await db.query(
@@ -406,11 +406,11 @@ exports.deleteCertification = async function (req, res) {
 
 exports.addLicence = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const { licenceName, awardingBody, officialUrl, completionDate } = req.body;
 
         if (!licenceName || !awardingBody) {
@@ -438,11 +438,11 @@ exports.addLicence = async function (req, res) {
 
 exports.getLicences = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const [rows] = await db.query(
             `SELECT * FROM licences WHERE user_id = ?`,
             [userId]
@@ -460,11 +460,11 @@ exports.getLicences = async function (req, res) {
 
 exports.updateLicence = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const id = req.params.id;
         const { licenceName, awardingBody, officialUrl, completionDate } = req.body;
 
@@ -487,11 +487,11 @@ exports.updateLicence = async function (req, res) {
 
 exports.deleteLicence = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         await db.query(
             `DELETE FROM licences WHERE id = ? AND user_id = ?`,
             [req.params.id, userId]
@@ -509,11 +509,11 @@ exports.deleteLicence = async function (req, res) {
 
 exports.addCourse = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const { courseName, providerName, officialUrl, completionDate } = req.body;
 
         if (!courseName || !providerName) {
@@ -541,11 +541,11 @@ exports.addCourse = async function (req, res) {
 
 exports.getCourses = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const [rows] = await db.query(
             `SELECT * FROM professional_courses WHERE user_id = ?`,
             [userId]
@@ -563,11 +563,11 @@ exports.getCourses = async function (req, res) {
 
 exports.updateCourse = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const id = req.params.id;
         const { courseName, providerName, officialUrl, completionDate } = req.body;
 
@@ -590,11 +590,11 @@ exports.updateCourse = async function (req, res) {
 
 exports.deleteCourse = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         await db.query(
             `DELETE FROM professional_courses WHERE id = ? AND user_id = ?`,
             [req.params.id, userId]
@@ -612,11 +612,11 @@ exports.deleteCourse = async function (req, res) {
 
 exports.addEmployment = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const { companyName, jobTitle, startDate, endDate, isCurrent } = req.body;
 
         if (!companyName || !jobTitle) {
@@ -644,11 +644,11 @@ exports.addEmployment = async function (req, res) {
 
 exports.getEmployment = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const [rows] = await db.query(
             `SELECT * FROM employment_history WHERE user_id = ?`,
             [userId]
@@ -666,11 +666,11 @@ exports.getEmployment = async function (req, res) {
 
 exports.updateEmployment = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const id = req.params.id;
         const { companyName, jobTitle, startDate, endDate, isCurrent } = req.body;
 
@@ -693,11 +693,11 @@ exports.updateEmployment = async function (req, res) {
 
 exports.deleteEmployment = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({ error: 'Authentication required' });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         await db.query(
             `DELETE FROM employment_history WHERE id = ? AND user_id = ?`,
             [req.params.id, userId]
@@ -715,7 +715,7 @@ exports.deleteEmployment = async function (req, res) {
 
 exports.uploadProfileImage = async function (req, res) {
     try {
-        if (!req.session || !req.session.user) {
+        if (!req.user) {
             return res.status(401).json({
                 error: 'Authentication required'
             });
@@ -727,7 +727,7 @@ exports.uploadProfileImage = async function (req, res) {
             });
         }
 
-        const userId = req.session.user.id;
+        const userId = req.user.id;
         const imagePath = `/uploads/${req.file.filename}`;
 
         const [existing] = await db.query(
