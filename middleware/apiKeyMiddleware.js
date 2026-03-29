@@ -5,11 +5,19 @@ const crypto = require('crypto');
 
 module.exports = async function (req, res, next) {
     try {
-        const apiKey = req.headers['x-api-key'];
+        const authHeader = req.headers.authorization;
+
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({
+                error: 'Bearer token is required'
+            });
+        }
+
+        const apiKey = authHeader.split(' ')[1];
 
         if (!apiKey) {
             return res.status(401).json({
-                error: 'API key is required'
+                error: 'API key is missing'
             });
         }
 
@@ -58,14 +66,14 @@ module.exports = async function (req, res, next) {
             });
         }
 
-        // Attach validated key details to request
+        // Attach to request
         req.apiKey = {
             id: key.id,
             clientId: key.client_id,
             scopes: key.scopes ? JSON.parse(key.scopes) : []
         };
 
-        // Log API usage
+        // Log usage
         await db.query(
             `INSERT INTO api_usage_logs (api_key_id, endpoint, method, ip_address)
              VALUES (?, ?, ?, ?)`,

@@ -3,7 +3,6 @@
 const db = require('../../db');
 const { updateProfileCompletionStatus } = require('./profileCompletion');
 
-
 exports.getMyProfile = async function (req, res) {
     try {
         if (!req.user) {
@@ -16,9 +15,9 @@ exports.getMyProfile = async function (req, res) {
 
         const [rows] = await db.query(
             `SELECT id, user_id, first_name, last_name, biography, linkedin_url, profile_image_path, completion_status, created_at, updated_at
-       FROM profiles
-       WHERE user_id = ?
-       LIMIT 1`,
+             FROM profiles
+             WHERE user_id = ?
+             LIMIT 1`,
             [userId]
         );
 
@@ -27,7 +26,7 @@ exports.getMyProfile = async function (req, res) {
                 error: 'Profile not found'
             });
         }
-        await updateProfileCompletionStatus(userId);
+
         return res.json({
             success: true,
             profile: rows[0]
@@ -93,7 +92,6 @@ exports.createMyProfile = async function (req, res) {
             message: 'Profile created successfully',
             profileId: result.insertId
         });
-
     } catch (err) {
         console.error('Create profile error:', err);
         return res.status(500).json({
@@ -149,7 +147,6 @@ exports.updateMyProfile = async function (req, res) {
             success: true,
             message: 'Profile updated successfully'
         });
-
     } catch (err) {
         console.error('Update profile error:', err);
         return res.status(500).json({
@@ -175,7 +172,7 @@ exports.addDegree = async function (req, res) {
 
         const [result] = await db.query(
             `INSERT INTO degrees (user_id, degree_name, institution_name, official_url, completion_date)
-       VALUES (?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?)`,
             [
                 userId,
                 degreeName,
@@ -184,16 +181,17 @@ exports.addDegree = async function (req, res) {
                 completionDate || null
             ]
         );
+
         await updateProfileCompletionStatus(userId);
-        res.status(201).json({
+
+        return res.status(201).json({
             success: true,
             message: 'Degree added successfully',
             degreeId: result.insertId
         });
-
     } catch (err) {
         console.error('Add degree error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -209,15 +207,14 @@ exports.getDegrees = async function (req, res) {
             `SELECT * FROM degrees WHERE user_id = ?`,
             [userId]
         );
-        await updateProfileCompletionStatus(userId);
-        res.json({
+
+        return res.json({
             success: true,
             degrees: rows
         });
-
     } catch (err) {
         console.error('Get degrees error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -233,8 +230,8 @@ exports.updateDegree = async function (req, res) {
 
         await db.query(
             `UPDATE degrees
-       SET degree_name = ?, institution_name = ?, official_url = ?, completion_date = ?
-       WHERE id = ? AND user_id = ?`,
+             SET degree_name = ?, institution_name = ?, official_url = ?, completion_date = ?
+             WHERE id = ? AND user_id = ?`,
             [
                 degreeName,
                 institutionName,
@@ -244,15 +241,16 @@ exports.updateDegree = async function (req, res) {
                 userId
             ]
         );
+
         await updateProfileCompletionStatus(userId);
-        res.json({
+
+        return res.json({
             success: true,
             message: 'Degree updated successfully'
         });
-
     } catch (err) {
         console.error('Update degree error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -269,15 +267,16 @@ exports.deleteDegree = async function (req, res) {
             `DELETE FROM degrees WHERE id = ? AND user_id = ?`,
             [degreeId, userId]
         );
+
         await updateProfileCompletionStatus(userId);
-        res.json({
+
+        return res.json({
             success: true,
             message: 'Degree deleted successfully'
         });
-
     } catch (err) {
         console.error('Delete degree error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -298,7 +297,7 @@ exports.addCertification = async function (req, res) {
 
         const [result] = await db.query(
             `INSERT INTO certifications (user_id, certification_name, provider_name, official_url, completion_date)
-       VALUES (?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?)`,
             [
                 userId,
                 certificationName,
@@ -307,16 +306,17 @@ exports.addCertification = async function (req, res) {
                 completionDate || null
             ]
         );
+
         await updateProfileCompletionStatus(userId);
-        res.status(201).json({
+
+        return res.status(201).json({
             success: true,
             message: 'Certification added successfully',
             certificationId: result.insertId
         });
-
     } catch (err) {
         console.error('Add certification error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -332,15 +332,14 @@ exports.getCertifications = async function (req, res) {
             `SELECT * FROM certifications WHERE user_id = ?`,
             [userId]
         );
-        await updateProfileCompletionStatus(userId);
-        res.json({
+
+        return res.json({
             success: true,
             certifications: rows
         });
-
     } catch (err) {
         console.error('Get certifications error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -356,8 +355,8 @@ exports.updateCertification = async function (req, res) {
 
         await db.query(
             `UPDATE certifications
-       SET certification_name = ?, provider_name = ?, official_url = ?, completion_date = ?
-       WHERE id = ? AND user_id = ?`,
+             SET certification_name = ?, provider_name = ?, official_url = ?, completion_date = ?
+             WHERE id = ? AND user_id = ?`,
             [
                 certificationName,
                 providerName,
@@ -367,15 +366,16 @@ exports.updateCertification = async function (req, res) {
                 userId
             ]
         );
+
         await updateProfileCompletionStatus(userId);
-        res.json({
+
+        return res.json({
             success: true,
             message: 'Certification updated successfully'
         });
-
     } catch (err) {
         console.error('Update certification error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -392,15 +392,16 @@ exports.deleteCertification = async function (req, res) {
             `DELETE FROM certifications WHERE id = ? AND user_id = ?`,
             [id, userId]
         );
+
         await updateProfileCompletionStatus(userId);
-        res.json({
+
+        return res.json({
             success: true,
             message: 'Certification deleted successfully'
         });
-
     } catch (err) {
         console.error('Delete certification error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -421,18 +422,20 @@ exports.addLicence = async function (req, res) {
 
         const [result] = await db.query(
             `INSERT INTO licences (user_id, licence_name, awarding_body, official_url, completion_date)
-       VALUES (?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?)`,
             [userId, licenceName, awardingBody, officialUrl || null, completionDate || null]
         );
+
         await updateProfileCompletionStatus(userId);
-        res.status(201).json({
+
+        return res.status(201).json({
             success: true,
             message: 'Licence added successfully',
             licenceId: result.insertId
         });
     } catch (err) {
         console.error('Add licence error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -443,18 +446,19 @@ exports.getLicences = async function (req, res) {
         }
 
         const userId = req.user.id;
+
         const [rows] = await db.query(
             `SELECT * FROM licences WHERE user_id = ?`,
             [userId]
         );
-        await updateProfileCompletionStatus(userId);
-        res.json({
+
+        return res.json({
             success: true,
             licences: rows
         });
     } catch (err) {
         console.error('Get licences error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -470,18 +474,20 @@ exports.updateLicence = async function (req, res) {
 
         await db.query(
             `UPDATE licences
-       SET licence_name = ?, awarding_body = ?, official_url = ?, completion_date = ?
-       WHERE id = ? AND user_id = ?`,
+             SET licence_name = ?, awarding_body = ?, official_url = ?, completion_date = ?
+             WHERE id = ? AND user_id = ?`,
             [licenceName, awardingBody, officialUrl || null, completionDate || null, id, userId]
         );
+
         await updateProfileCompletionStatus(userId);
-        res.json({
+
+        return res.json({
             success: true,
             message: 'Licence updated successfully'
         });
     } catch (err) {
         console.error('Update licence error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -492,18 +498,21 @@ exports.deleteLicence = async function (req, res) {
         }
 
         const userId = req.user.id;
+
         await db.query(
             `DELETE FROM licences WHERE id = ? AND user_id = ?`,
             [req.params.id, userId]
         );
+
         await updateProfileCompletionStatus(userId);
-        res.json({
+
+        return res.json({
             success: true,
             message: 'Licence deleted successfully'
         });
     } catch (err) {
         console.error('Delete licence error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -524,18 +533,20 @@ exports.addCourse = async function (req, res) {
 
         const [result] = await db.query(
             `INSERT INTO professional_courses (user_id, course_name, provider_name, official_url, completion_date)
-       VALUES (?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?)`,
             [userId, courseName, providerName, officialUrl || null, completionDate || null]
         );
+
         await updateProfileCompletionStatus(userId);
-        res.status(201).json({
+
+        return res.status(201).json({
             success: true,
             message: 'Course added successfully',
             courseId: result.insertId
         });
     } catch (err) {
         console.error('Add course error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -546,18 +557,19 @@ exports.getCourses = async function (req, res) {
         }
 
         const userId = req.user.id;
+
         const [rows] = await db.query(
             `SELECT * FROM professional_courses WHERE user_id = ?`,
             [userId]
         );
-        await updateProfileCompletionStatus(userId);
-        res.json({
+
+        return res.json({
             success: true,
             courses: rows
         });
     } catch (err) {
         console.error('Get courses error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -573,18 +585,20 @@ exports.updateCourse = async function (req, res) {
 
         await db.query(
             `UPDATE professional_courses
-       SET course_name = ?, provider_name = ?, official_url = ?, completion_date = ?
-       WHERE id = ? AND user_id = ?`,
+             SET course_name = ?, provider_name = ?, official_url = ?, completion_date = ?
+             WHERE id = ? AND user_id = ?`,
             [courseName, providerName, officialUrl || null, completionDate || null, id, userId]
         );
+
         await updateProfileCompletionStatus(userId);
-        res.json({
+
+        return res.json({
             success: true,
             message: 'Course updated successfully'
         });
     } catch (err) {
         console.error('Update course error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -595,18 +609,21 @@ exports.deleteCourse = async function (req, res) {
         }
 
         const userId = req.user.id;
+
         await db.query(
             `DELETE FROM professional_courses WHERE id = ? AND user_id = ?`,
             [req.params.id, userId]
         );
+
         await updateProfileCompletionStatus(userId);
-        res.json({
+
+        return res.json({
             success: true,
             message: 'Course deleted successfully'
         });
     } catch (err) {
         console.error('Delete course error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -627,18 +644,20 @@ exports.addEmployment = async function (req, res) {
 
         const [result] = await db.query(
             `INSERT INTO employment_history (user_id, company_name, job_title, start_date, end_date, is_current)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, ?)`,
             [userId, companyName, jobTitle, startDate || null, endDate || null, isCurrent ? 1 : 0]
         );
+
         await updateProfileCompletionStatus(userId);
-        res.status(201).json({
+
+        return res.status(201).json({
             success: true,
             message: 'Employment history added successfully',
             employmentId: result.insertId
         });
     } catch (err) {
         console.error('Add employment error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -649,18 +668,19 @@ exports.getEmployment = async function (req, res) {
         }
 
         const userId = req.user.id;
+
         const [rows] = await db.query(
             `SELECT * FROM employment_history WHERE user_id = ?`,
             [userId]
         );
-        await updateProfileCompletionStatus(userId);
-        res.json({
+
+        return res.json({
             success: true,
             employment: rows
         });
     } catch (err) {
         console.error('Get employment error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -676,18 +696,20 @@ exports.updateEmployment = async function (req, res) {
 
         await db.query(
             `UPDATE employment_history
-       SET company_name = ?, job_title = ?, start_date = ?, end_date = ?, is_current = ?
-       WHERE id = ? AND user_id = ?`,
+             SET company_name = ?, job_title = ?, start_date = ?, end_date = ?, is_current = ?
+             WHERE id = ? AND user_id = ?`,
             [companyName, jobTitle, startDate || null, endDate || null, isCurrent ? 1 : 0, id, userId]
         );
+
         await updateProfileCompletionStatus(userId);
-        res.json({
+
+        return res.json({
             success: true,
             message: 'Employment history updated successfully'
         });
     } catch (err) {
         console.error('Update employment error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -698,18 +720,21 @@ exports.deleteEmployment = async function (req, res) {
         }
 
         const userId = req.user.id;
+
         await db.query(
             `DELETE FROM employment_history WHERE id = ? AND user_id = ?`,
             [req.params.id, userId]
         );
+
         await updateProfileCompletionStatus(userId);
-        res.json({
+
+        return res.json({
             success: true,
             message: 'Employment history deleted successfully'
         });
     } catch (err) {
         console.error('Delete employment error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -743,12 +768,13 @@ exports.uploadProfileImage = async function (req, res) {
 
         await db.query(
             `UPDATE profiles
-       SET profile_image_path = ?
-       WHERE user_id = ?`,
+             SET profile_image_path = ?
+             WHERE user_id = ?`,
             [imagePath, userId]
         );
 
         const completionStatus = await updateProfileCompletionStatus(userId);
+
         return res.json({
             success: true,
             message: 'Profile image uploaded successfully',
@@ -762,4 +788,3 @@ exports.uploadProfileImage = async function (req, res) {
         });
     }
 };
-
