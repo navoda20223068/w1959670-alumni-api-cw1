@@ -263,16 +263,18 @@ exports.requestPasswordReset = async function (req, res) {
         const cleanEmail = String(email).trim().toLowerCase();
 
         const [rows] = await db.query(
-            `SELECT id, university_email
-       FROM users
-       WHERE university_email = ?
-       LIMIT 1`,
+            `SELECT id
+             FROM users
+             WHERE university_email = ?
+             LIMIT 1`,
             [cleanEmail]
         );
 
+        // Always return the same response to prevent email enumeration
         if (rows.length === 0) {
-            return res.status(404).json({
-                error: 'User not found'
+            return res.json({
+                success: true,
+                message: 'If that email exists, a reset token has been generated'
             });
         }
 
@@ -280,19 +282,20 @@ exports.requestPasswordReset = async function (req, res) {
 
         const rawToken = crypto.randomBytes(32).toString('hex');
         const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
         await db.query(
             `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, used_at)
-       VALUES (?, ?, ?, NULL)`,
+             VALUES (?, ?, ?, NULL)`,
             [user.id, tokenHash, expiresAt]
         );
 
         return res.json({
             success: true,
-            message: 'Password reset token generated',
+            message: 'If that email exists, a reset token has been generated',
             resetToken: rawToken
         });
+
     } catch (err) {
         console.error('Request reset error:', err);
         return res.status(500).json({
