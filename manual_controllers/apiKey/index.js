@@ -1,3 +1,8 @@
+'use strict';
+
+const db = require('../../db');
+const crypto = require('crypto');
+
 exports.getKeyStats = async function (req, res) {
     try {
         if (!req.user) {
