@@ -9,7 +9,6 @@ exports.getKeyStats = async function (req, res) {
         const userId = req.user.id;
         const apiKeyId = req.params.id;
 
-        // Make sure the key belongs to this user
         const [ownedKeys] = await db.query(
             `SELECT ak.id
              FROM api_keys ak

@@ -13,3 +13,4 @@ router.post('/keys/:id/revoke', authJwtMiddleware, apiKeyController.revokeApiKey
 router.get('/keys/:id/stats', authJwtMiddleware, apiKeyController.getKeyStats);
 
 module.exports = router;
+

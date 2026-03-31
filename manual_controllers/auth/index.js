@@ -235,9 +235,14 @@ exports.logout = async function (req, res) {
     }
 };
 
-// GET /auth/check
 exports.checkAuth = async function (req, res) {
     try {
+        if (!req.user) {
+            return res.status(401).json({
+                authenticated: false
+            });
+        }
+
         return res.json({
             authenticated: true,
             user: req.user
@@ -269,8 +274,6 @@ exports.requestPasswordReset = async function (req, res) {
              LIMIT 1`,
             [cleanEmail]
         );
-
-        // Always return the same response to prevent email enumeration
         if (rows.length === 0) {
             return res.json({
                 success: true,
