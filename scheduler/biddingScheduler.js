@@ -1,61 +1,7 @@
 'use strict';
 
 const cron = require('node-cron');
-const db = require('../db');
-
-async function finalizeWinnerForDate(bidDate) {
-    const [alreadyFinalized] = await db.query(
-        `SELECT id
-         FROM appearance_history
-         WHERE featured_date = ?
-         LIMIT 1`,
-        [bidDate]
-    );
-
-    if (alreadyFinalized.length > 0) {
-        return;
-    }
-
-    const [topBidRows] = await db.query(
-        `SELECT id, user_id, amount
-         FROM bids
-         WHERE bid_date = ?
-           AND status != 'cancelled'
-         ORDER BY amount DESC, created_at ASC
-         LIMIT 1`,
-        [bidDate]
-    );
-
-    if (topBidRows.length === 0) {
-        return;
-    }
-
-    const winningBid = topBidRows[0];
-
-    await db.query(
-        `UPDATE bids
-         SET status = 'won'
-         WHERE id = ?`,
-        [winningBid.id]
-    );
-
-    await db.query(
-        `UPDATE bids
-         SET status = 'lost'
-         WHERE bid_date = ?
-           AND id != ?
-           AND status != 'cancelled'`,
-        [bidDate, winningBid.id]
-    );
-
-    await db.query(
-        `INSERT INTO appearance_history (user_id, featured_date, won_by_bid_id, event_bonus_used)
-         VALUES (?, ?, ?, 0)`,
-        [winningBid.user_id, bidDate, winningBid.id]
-    );
-
-    console.log(`Winner finalized automatically for ${bidDate}`);
-}
+const { finalizeWinnerForDate } = require('../services/biddingFinalizer');
 
 function startBiddingScheduler() {
     // Every day at 00:05
@@ -68,7 +14,16 @@ function startBiddingScheduler() {
             const bidDate = `${yyyy}-${mm}-${dd}`;
 
             await finalizeWinnerForDate(bidDate);
+            console.log(`Winner finalized automatically for ${bidDate}`);
         } catch (err) {
+            if (
+                err.message === 'Winner already finalized for this date' ||
+                err.message === 'No bids found for this date'
+            ) {
+                console.log(`Scheduler skipped for ${new Date().toISOString().split('T')[0]}: ${err.message}`);
+                return;
+            }
+
             console.error('Bidding scheduler error:', err);
         }
     });

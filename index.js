@@ -99,9 +99,6 @@ app.use(function(req, res, next){
 
 /* -------------------- ROUTES -------------------- */
 
-// legacy controllers (if still used)
-require('./lib/boot')(app, { verbose: !module.parent });
-
 // auth
 const authRoutes = require('./routes/authRoutes');
 app.use('/auth', authRoutes);

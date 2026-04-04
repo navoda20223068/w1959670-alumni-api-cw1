@@ -10,5 +10,6 @@ router.put('/increase/:id', authJwtMiddleware, biddingController.increaseBid);
 router.get('/my-bids', authJwtMiddleware, biddingController.getMyBids);
 router.get('/status/:date', authJwtMiddleware, biddingController.getMyBidStatusForDate);
 router.post('/cancel/:id', authJwtMiddleware, biddingController.cancelBid);
+router.post('/finalize/:date', authJwtMiddleware, biddingController.finalizeWinner);
 
 module.exports = router;
