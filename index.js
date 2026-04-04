@@ -50,9 +50,40 @@ const swaggerSpec = swaggerJsdoc({
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Alumni API',
+      title: 'Alumni Influencer Platform API',
       version: '1.0.0',
-      description: 'Alumni Influencer Platform API'
+      description: 'Coursework API for alumni registration, profile management, blind bidding, developer API keys, and public featured alumni access.'
+    },
+    servers: [
+      {
+        url: `http://localhost:${process.env.PORT || 3000}`,
+        description: 'Local development server'
+      }
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT'
+        },
+        apiKeyAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'API Key'
+        }
+      },
+      schemas: {
+        ErrorResponse: {
+          type: 'object',
+          properties: {
+            error: {
+              type: 'string',
+              example: 'Internal server error'
+            }
+          }
+        }
+      }
     }
   },
   apis: ['./routes/*.js']
