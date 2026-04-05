@@ -4,6 +4,14 @@ const express = require('express');
 const router = express.Router();
 const biddingController = require('../manual_controllers/bidding/index');
 const authJwtMiddleware = require('../middleware/authJwtMiddleware');
+const validate = require('../middleware/validate');
+
+const {
+    placeBidSchema,
+    increaseBidSchema,
+    bidIdParamSchema,
+    bidDateParamSchema
+} = require('../validators/biddingValidators');
 
 /**
  * @swagger
@@ -45,7 +53,7 @@ const authJwtMiddleware = require('../middleware/authJwtMiddleware');
  *     tags: [Bidding]
  *     security:
  *       - bearerAuth: []
- *     description: Allows an alumnus to place a bid without seeing other bids. Only valid if profile is complete and monthly limits are not exceeded.
+ *     description: Allows an alumnus to place a bid without seeing other bids. Only valid if the profile is complete and monthly limits are not exceeded.
  *     requestBody:
  *       required: true
  *       content:
@@ -62,7 +70,12 @@ const authJwtMiddleware = require('../middleware/authJwtMiddleware');
  *       409:
  *         description: Existing bid already exists for that date
  */
-router.post('/place', authJwtMiddleware, biddingController.placeBid);
+router.post(
+    '/place',
+    authJwtMiddleware,
+    validate(placeBidSchema),
+    biddingController.placeBid
+);
 
 /**
  * @swagger
@@ -72,7 +85,7 @@ router.post('/place', authJwtMiddleware, biddingController.placeBid);
  *     tags: [Bidding]
  *     security:
  *       - bearerAuth: []
- *     description: Allows a user to increase their bid amount. New amount must be greater than the existing bid.
+ *     description: Allows a user to increase their bid amount. The new amount must be greater than the current bid.
  *     parameters:
  *       - in: path
  *         name: id
@@ -94,7 +107,13 @@ router.post('/place', authJwtMiddleware, biddingController.placeBid);
  *       404:
  *         description: Bid not found
  */
-router.put('/increase/:id', authJwtMiddleware, biddingController.increaseBid);
+router.put(
+    '/increase/:id',
+    authJwtMiddleware,
+    validate(bidIdParamSchema, 'params'),
+    validate(increaseBidSchema),
+    biddingController.increaseBid
+);
 
 /**
  * @swagger
@@ -134,7 +153,12 @@ router.get('/my-bids', authJwtMiddleware, biddingController.getMyBids);
  *       404:
  *         description: No bid found for that date
  */
-router.get('/status/:date', authJwtMiddleware, biddingController.getMyBidStatusForDate);
+router.get(
+    '/status/:date',
+    authJwtMiddleware,
+    validate(bidDateParamSchema, 'params'),
+    biddingController.getMyBidStatusForDate
+);
 
 /**
  * @swagger
@@ -159,7 +183,12 @@ router.get('/status/:date', authJwtMiddleware, biddingController.getMyBidStatusF
  *       404:
  *         description: Bid not found
  */
-router.post('/cancel/:id', authJwtMiddleware, biddingController.cancelBid);
+router.post(
+    '/cancel/:id',
+    authJwtMiddleware,
+    validate(bidIdParamSchema, 'params'),
+    biddingController.cancelBid
+);
 
 /**
  * @swagger
@@ -188,6 +217,11 @@ router.post('/cancel/:id', authJwtMiddleware, biddingController.cancelBid);
  *       409:
  *         description: Winner already finalized
  */
-router.post('/finalize/:date', authJwtMiddleware, biddingController.finalizeWinner);
+router.post(
+    '/finalize/:date',
+    authJwtMiddleware,
+    validate(bidDateParamSchema, 'params'),
+    biddingController.finalizeWinner
+);
 
 module.exports = router;

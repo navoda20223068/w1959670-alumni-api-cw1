@@ -12,6 +12,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 
 const { startBiddingScheduler } = require('./scheduler/biddingScheduler');
+const { verifyEmailTransport } = require('./services/emailService');
 
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profileRoutes');
@@ -19,8 +20,11 @@ const biddingRoutes = require('./routes/biddingRoutes');
 const apiKeyRoutes = require('./routes/apiKeyRoutes');
 const publicApiRoutes = require('./routes/publicApiRoutes');
 
-const app = module.exports = express();
-const PORT = process.env.PORT || 3000;
+const app = express();
+module.exports = app;
+
+const PORT = Number(process.env.PORT || 3000);
+const IS_DIRECT_RUN = !module.parent;
 
 /* -------------------- APP SETTINGS -------------------- */
 
@@ -36,25 +40,36 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+/* -------------------- RATE LIMITERS -------------------- */
+
 const publicApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  message: {
+    error: 'Too many requests. Please try again later.'
+  }
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  message: {
+    error: 'Too many authentication requests. Please try again later.'
+  }
 });
 
 const biddingWriteLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  message: {
+    error: 'Too many bidding requests. Please try again later.'
+  }
 });
 
 /* -------------------- SWAGGER SETUP -------------------- */
@@ -66,7 +81,7 @@ const swaggerSpec = swaggerJsdoc({
       title: 'Alumni Influencer Platform API',
       version: '1.0.0',
       description:
-          'Coursework API for alumni registration, profile management, blind bidding, developer API keys, and public featured alumni access.'
+          'Coursework API for alumni registration, profile management, blind bidding, developer API keys, and public featured alumnus access.'
     },
     servers: [
       {
@@ -105,7 +120,7 @@ const swaggerSpec = swaggerJsdoc({
 
 /* -------------------- BASIC MIDDLEWARE -------------------- */
 
-if (!module.parent) {
+if (IS_DIRECT_RUN) {
   app.use(logger('dev'));
 }
 
@@ -119,26 +134,27 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use('/api', publicApiLimiter);
 app.use('/auth', authLimiter);
+app.use('/bidding', biddingWriteLimiter);
 
 /* -------------------- ROUTES -------------------- */
 
 app.use('/auth', authRoutes);
 app.use('/profile', profileRoutes);
-app.use('/bidding', biddingWriteLimiter, biddingRoutes);
+app.use('/bidding', biddingRoutes);
 app.use('/developer', apiKeyRoutes);
 app.use('/api', publicApiRoutes);
 
 /* -------------------- ERROR HANDLING -------------------- */
 
-app.use(function (req, res) {
+app.use(function notFoundHandler(req, res) {
   return res.status(404).json({
     error: 'Not found',
     url: req.originalUrl
   });
 });
 
-app.use(function (err, req, res, next) {
-  if (!module.parent) {
+app.use(function errorHandler(err, req, res, next) {
+  if (IS_DIRECT_RUN) {
     console.error(err.stack);
   }
 
@@ -149,14 +165,30 @@ app.use(function (err, req, res, next) {
 
 /* -------------------- STARTUP -------------------- */
 
-if (process.env.RUN_SCHEDULER === 'true') {
-  startBiddingScheduler();
+async function bootstrap() {
+  try {
+    await verifyEmailTransport();
+    console.log('Email service is ready');
+
+    if (process.env.RUN_SCHEDULER === 'true') {
+      startBiddingScheduler();
+      console.log('Scheduler enabled: true');
+    } else {
+      console.log('Scheduler enabled: false');
+    }
+
+    if (IS_DIRECT_RUN) {
+      app.listen(PORT, () => {
+        console.log(`Express started on port ${PORT}`);
+        console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
+      });
+    }
+  } catch (err) {
+    console.error('Startup error:', err.message);
+    process.exit(1);
+  }
 }
 
-if (!module.parent) {
-  app.listen(PORT, () => {
-    console.log(`Express started on port ${PORT}`);
-    console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
-    console.log(`Scheduler enabled: ${process.env.RUN_SCHEDULER === 'true'}`);
-  });
+if (IS_DIRECT_RUN) {
+  bootstrap();
 }

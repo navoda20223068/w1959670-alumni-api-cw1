@@ -5,6 +5,17 @@ const router = express.Router();
 const profileController = require('../manual_controllers/profile/index');
 const upload = require('../middleware/uploadMiddleware');
 const authJwtMiddleware = require('../middleware/authJwtMiddleware');
+const validate = require('../middleware/validate');
+
+const {
+    profileSchema,
+    degreeSchema,
+    certificationSchema,
+    licenceSchema,
+    courseSchema,
+    employmentSchema,
+    idParamSchema
+} = require('../validators/profileValidators');
 
 /**
  * @swagger
@@ -118,6 +129,7 @@ const authJwtMiddleware = require('../middleware/authJwtMiddleware');
  *       required:
  *         - companyName
  *         - jobTitle
+ *         - isCurrent
  *       properties:
  *         companyName:
  *           type: string
@@ -183,7 +195,12 @@ router.get('/me', authJwtMiddleware, profileController.getMyProfile);
  *       500:
  *         description: Internal server error
  */
-router.post('/me', authJwtMiddleware, profileController.createMyProfile);
+router.post(
+    '/me',
+    authJwtMiddleware,
+    validate(profileSchema),
+    profileController.createMyProfile
+);
 
 /**
  * @swagger
@@ -209,7 +226,12 @@ router.post('/me', authJwtMiddleware, profileController.createMyProfile);
  *       500:
  *         description: Internal server error
  */
-router.put('/me', authJwtMiddleware, profileController.updateMyProfile);
+router.put(
+    '/me',
+    authJwtMiddleware,
+    validate(profileSchema),
+    profileController.updateMyProfile
+);
 
 /**
  * @swagger
@@ -233,7 +255,12 @@ router.put('/me', authJwtMiddleware, profileController.updateMyProfile);
  *       500:
  *         description: Internal server error
  */
-router.post('/degrees', authJwtMiddleware, profileController.addDegree);
+router.post(
+    '/degrees',
+    authJwtMiddleware,
+    validate(degreeSchema),
+    profileController.addDegree
+);
 
 /**
  * @swagger
@@ -282,7 +309,13 @@ router.get('/degrees', authJwtMiddleware, profileController.getDegrees);
  *       500:
  *         description: Internal server error
  */
-router.put('/degrees/:id', authJwtMiddleware, profileController.updateDegree);
+router.put(
+    '/degrees/:id',
+    authJwtMiddleware,
+    validate(idParamSchema, 'params'),
+    validate(degreeSchema),
+    profileController.updateDegree
+);
 
 /**
  * @swagger
@@ -307,7 +340,12 @@ router.put('/degrees/:id', authJwtMiddleware, profileController.updateDegree);
  *       500:
  *         description: Internal server error
  */
-router.delete('/degrees/:id', authJwtMiddleware, profileController.deleteDegree);
+router.delete(
+    '/degrees/:id',
+    authJwtMiddleware,
+    validate(idParamSchema, 'params'),
+    profileController.deleteDegree
+);
 
 /**
  * @swagger
@@ -331,7 +369,12 @@ router.delete('/degrees/:id', authJwtMiddleware, profileController.deleteDegree)
  *       500:
  *         description: Internal server error
  */
-router.post('/certifications', authJwtMiddleware, profileController.addCertification);
+router.post(
+    '/certifications',
+    authJwtMiddleware,
+    validate(certificationSchema),
+    profileController.addCertification
+);
 
 /**
  * @swagger
@@ -380,7 +423,13 @@ router.get('/certifications', authJwtMiddleware, profileController.getCertificat
  *       500:
  *         description: Internal server error
  */
-router.put('/certifications/:id', authJwtMiddleware, profileController.updateCertification);
+router.put(
+    '/certifications/:id',
+    authJwtMiddleware,
+    validate(idParamSchema, 'params'),
+    validate(certificationSchema),
+    profileController.updateCertification
+);
 
 /**
  * @swagger
@@ -405,7 +454,12 @@ router.put('/certifications/:id', authJwtMiddleware, profileController.updateCer
  *       500:
  *         description: Internal server error
  */
-router.delete('/certifications/:id', authJwtMiddleware, profileController.deleteCertification);
+router.delete(
+    '/certifications/:id',
+    authJwtMiddleware,
+    validate(idParamSchema, 'params'),
+    profileController.deleteCertification
+);
 
 /**
  * @swagger
@@ -429,7 +483,12 @@ router.delete('/certifications/:id', authJwtMiddleware, profileController.delete
  *       500:
  *         description: Internal server error
  */
-router.post('/licences', authJwtMiddleware, profileController.addLicence);
+router.post(
+    '/licences',
+    authJwtMiddleware,
+    validate(licenceSchema),
+    profileController.addLicence
+);
 
 /**
  * @swagger
@@ -478,7 +537,13 @@ router.get('/licences', authJwtMiddleware, profileController.getLicences);
  *       500:
  *         description: Internal server error
  */
-router.put('/licences/:id', authJwtMiddleware, profileController.updateLicence);
+router.put(
+    '/licences/:id',
+    authJwtMiddleware,
+    validate(idParamSchema, 'params'),
+    validate(licenceSchema),
+    profileController.updateLicence
+);
 
 /**
  * @swagger
@@ -503,7 +568,12 @@ router.put('/licences/:id', authJwtMiddleware, profileController.updateLicence);
  *       500:
  *         description: Internal server error
  */
-router.delete('/licences/:id', authJwtMiddleware, profileController.deleteLicence);
+router.delete(
+    '/licences/:id',
+    authJwtMiddleware,
+    validate(idParamSchema, 'params'),
+    profileController.deleteLicence
+);
 
 /**
  * @swagger
@@ -527,7 +597,12 @@ router.delete('/licences/:id', authJwtMiddleware, profileController.deleteLicenc
  *       500:
  *         description: Internal server error
  */
-router.post('/courses', authJwtMiddleware, profileController.addCourse);
+router.post(
+    '/courses',
+    authJwtMiddleware,
+    validate(courseSchema),
+    profileController.addCourse
+);
 
 /**
  * @swagger
@@ -576,7 +651,13 @@ router.get('/courses', authJwtMiddleware, profileController.getCourses);
  *       500:
  *         description: Internal server error
  */
-router.put('/courses/:id', authJwtMiddleware, profileController.updateCourse);
+router.put(
+    '/courses/:id',
+    authJwtMiddleware,
+    validate(idParamSchema, 'params'),
+    validate(courseSchema),
+    profileController.updateCourse
+);
 
 /**
  * @swagger
@@ -601,7 +682,12 @@ router.put('/courses/:id', authJwtMiddleware, profileController.updateCourse);
  *       500:
  *         description: Internal server error
  */
-router.delete('/courses/:id', authJwtMiddleware, profileController.deleteCourse);
+router.delete(
+    '/courses/:id',
+    authJwtMiddleware,
+    validate(idParamSchema, 'params'),
+    profileController.deleteCourse
+);
 
 /**
  * @swagger
@@ -625,7 +711,12 @@ router.delete('/courses/:id', authJwtMiddleware, profileController.deleteCourse)
  *       500:
  *         description: Internal server error
  */
-router.post('/employment', authJwtMiddleware, profileController.addEmployment);
+router.post(
+    '/employment',
+    authJwtMiddleware,
+    validate(employmentSchema),
+    profileController.addEmployment
+);
 
 /**
  * @swagger
@@ -674,7 +765,13 @@ router.get('/employment', authJwtMiddleware, profileController.getEmployment);
  *       500:
  *         description: Internal server error
  */
-router.put('/employment/:id', authJwtMiddleware, profileController.updateEmployment);
+router.put(
+    '/employment/:id',
+    authJwtMiddleware,
+    validate(idParamSchema, 'params'),
+    validate(employmentSchema),
+    profileController.updateEmployment
+);
 
 /**
  * @swagger
@@ -699,7 +796,12 @@ router.put('/employment/:id', authJwtMiddleware, profileController.updateEmploym
  *       500:
  *         description: Internal server error
  */
-router.delete('/employment/:id', authJwtMiddleware, profileController.deleteEmployment);
+router.delete(
+    '/employment/:id',
+    authJwtMiddleware,
+    validate(idParamSchema, 'params'),
+    profileController.deleteEmployment
+);
 
 /**
  * @swagger
@@ -731,6 +833,11 @@ router.delete('/employment/:id', authJwtMiddleware, profileController.deleteEmpl
  *       500:
  *         description: Internal server error
  */
-router.post('/upload-image', authJwtMiddleware, upload.single('profileImage'), profileController.uploadProfileImage);
+router.post(
+    '/upload-image',
+    authJwtMiddleware,
+    upload.single('profileImage'),
+    profileController.uploadProfileImage
+);
 
 module.exports = router;

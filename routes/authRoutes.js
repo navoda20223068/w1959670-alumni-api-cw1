@@ -4,12 +4,22 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../manual_controllers/auth/index');
 const authJwtMiddleware = require('../middleware/authJwtMiddleware');
+const validate = require('../middleware/validate');
+
+const {
+    registerSchema,
+    loginSchema,
+    resendVerificationSchema,
+    requestResetSchema,
+    resetPasswordSchema,
+    verifyEmailParamsSchema
+} = require('../validators/authValidators');
 
 /**
  * @swagger
  * tags:
  *   name: Authentication
- *   description: Alumni registration, email verification, login, logout, authentication checks, and password reset
+ *   description: Alumni registration, email verification, login, logout, authentication checks, resend verification email, and password reset
  *
  * components:
  *   schemas:
@@ -39,6 +49,15 @@ const authJwtMiddleware = require('../middleware/authJwtMiddleware');
  *           type: string
  *           example: StrongPass123!
  *
+ *     ResendVerificationRequest:
+ *       type: object
+ *       required:
+ *         - email
+ *       properties:
+ *         email:
+ *           type: string
+ *           example: student@iit.ac.lk
+ *
  *     RequestResetRequest:
  *       type: object
  *       required:
@@ -56,10 +75,20 @@ const authJwtMiddleware = require('../middleware/authJwtMiddleware');
  *       properties:
  *         token:
  *           type: string
- *           example: 7b4c2d1f9a8e6c5b4d3a2f1e0c9b8a7d
+ *           example: 7b4c2d1f9a8e6c5b4d3a2f1e0c9b8a7d7b4c2d1f9a8e6c5b4d3a2f1e0c9b8a7d
  *         newPassword:
  *           type: string
  *           example: NewStrongPass123!
+ *
+ *     SuccessMessageResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           example: true
+ *         message:
+ *           type: string
+ *           example: Verification email sent successfully
  */
 
 /**
@@ -68,6 +97,7 @@ const authJwtMiddleware = require('../middleware/authJwtMiddleware');
  *   post:
  *     summary: Register a new alumnus account
  *     tags: [Authentication]
+ *     description: Registers a new alumnus account, creates a verification token, and sends a verification email.
  *     requestBody:
  *       required: true
  *       content:
@@ -76,7 +106,11 @@ const authJwtMiddleware = require('../middleware/authJwtMiddleware');
  *             $ref: '#/components/schemas/RegisterRequest'
  *     responses:
  *       201:
- *         description: User registered successfully
+ *         description: User registered successfully and verification email sent
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessMessageResponse'
  *       400:
  *         description: Invalid request data
  *       409:
@@ -84,7 +118,7 @@ const authJwtMiddleware = require('../middleware/authJwtMiddleware');
  *       500:
  *         description: Internal server error
  */
-router.post('/register', authController.register);
+router.post('/register', validate(registerSchema), authController.register);
 
 /**
  * @swagger
@@ -92,22 +126,62 @@ router.post('/register', authController.register);
  *   get:
  *     summary: Verify a user's email address using the verification token
  *     tags: [Authentication]
+ *     description: Verifies the user account if the token is valid, not expired, and has not already been used.
  *     parameters:
  *       - in: path
  *         name: token
  *         required: true
  *         schema:
  *           type: string
- *         example: 7b4c2d1f9a8e6c5b4d3a2f1e0c9b8a7d
+ *         example: 7b4c2d1f9a8e6c5b4d3a2f1e0c9b8a7d7b4c2d1f9a8e6c5b4d3a2f1e0c9b8a7d
  *     responses:
  *       200:
  *         description: Email verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessMessageResponse'
  *       400:
  *         description: Invalid, expired, or already used verification token
  *       500:
  *         description: Internal server error
  */
-router.get('/verify/:token', authController.verifyEmail);
+router.get(
+    '/verify/:token',
+    validate(verifyEmailParamsSchema, 'params'),
+    authController.verifyEmail
+);
+
+/**
+ * @swagger
+ * /auth/resend-verification:
+ *   post:
+ *     summary: Resend a verification email
+ *     tags: [Authentication]
+ *     description: Generates a fresh verification token and sends a new verification email if the account exists and is still unverified.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ResendVerificationRequest'
+ *     responses:
+ *       200:
+ *         description: Verification email sent successfully, or generic success response for an unknown email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessMessageResponse'
+ *       400:
+ *         description: Invalid email or already verified
+ *       500:
+ *         description: Internal server error
+ */
+router.post(
+    '/resend-verification',
+    validate(resendVerificationSchema),
+    authController.resendVerificationEmail
+);
 
 /**
  * @swagger
@@ -115,6 +189,7 @@ router.get('/verify/:token', authController.verifyEmail);
  *   post:
  *     summary: Log in and receive a JWT token
  *     tags: [Authentication]
+ *     description: Logs in a verified user and returns a signed JWT token.
  *     requestBody:
  *       required: true
  *       content:
@@ -125,7 +200,7 @@ router.get('/verify/:token', authController.verifyEmail);
  *       200:
  *         description: Login successful
  *       400:
- *         description: Email and password are required
+ *         description: Invalid request data
  *       401:
  *         description: Invalid email or password
  *       403:
@@ -133,7 +208,7 @@ router.get('/verify/:token', authController.verifyEmail);
  *       500:
  *         description: Internal server error
  */
-router.post('/login', authController.login);
+router.post('/login', validate(loginSchema), authController.login);
 
 /**
  * @swagger
@@ -141,6 +216,7 @@ router.post('/login', authController.login);
  *   post:
  *     summary: Log out the current user
  *     tags: [Authentication]
+ *     description: For JWT-based authentication, logout is handled client-side by removing the token.
  *     responses:
  *       200:
  *         description: Logout successful
@@ -171,8 +247,9 @@ router.get('/check', authJwtMiddleware, authController.checkAuth);
  * @swagger
  * /auth/request-reset:
  *   post:
- *     summary: Request a password reset token
+ *     summary: Request a password reset email
  *     tags: [Authentication]
+ *     description: Generates a password reset token and sends a reset email if the account exists.
  *     requestBody:
  *       required: true
  *       content:
@@ -181,13 +258,21 @@ router.get('/check', authJwtMiddleware, authController.checkAuth);
  *             $ref: '#/components/schemas/RequestResetRequest'
  *     responses:
  *       200:
- *         description: Password reset token generated if account exists
+ *         description: Generic success response to avoid account enumeration
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessMessageResponse'
  *       400:
- *         description: Email is required
+ *         description: Invalid request data
  *       500:
  *         description: Internal server error
  */
-router.post('/request-reset', authController.requestPasswordReset);
+router.post(
+    '/request-reset',
+    validate(requestResetSchema),
+    authController.requestPasswordReset
+);
 
 /**
  * @swagger
@@ -195,6 +280,7 @@ router.post('/request-reset', authController.requestPasswordReset);
  *   post:
  *     summary: Reset password using a valid reset token
  *     tags: [Authentication]
+ *     description: Resets the password if the reset token is valid, unexpired, and unused.
  *     requestBody:
  *       required: true
  *       content:
@@ -204,11 +290,19 @@ router.post('/request-reset', authController.requestPasswordReset);
  *     responses:
  *       200:
  *         description: Password reset successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessMessageResponse'
  *       400:
  *         description: Invalid request data, invalid token, expired token, or used token
  *       500:
  *         description: Internal server error
  */
-router.post('/reset-password', authController.resetPassword);
+router.post(
+    '/reset-password',
+    validate(resetPasswordSchema),
+    authController.resetPassword
+);
 
 module.exports = router;

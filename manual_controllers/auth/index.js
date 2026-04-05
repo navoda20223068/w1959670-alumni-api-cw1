@@ -4,6 +4,10 @@ const db = require('../../db');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const {
+    sendVerificationEmail,
+    sendPasswordResetEmail
+} = require('../../services/emailService');
 
 // POST /auth_manual/register
 exports.register = async function (req, res) {
@@ -49,7 +53,7 @@ exports.register = async function (req, res) {
 
         const [result] = await db.query(
             `INSERT INTO users (university_email, password_hash, email_verified, role)
-       VALUES (?, ?, 0, 'alumnus')`,
+             VALUES (?, ?, 0, 'alumnus')`,
             [cleanEmail, passwordHash]
         );
 
@@ -61,15 +65,15 @@ exports.register = async function (req, res) {
 
         await db.query(
             `INSERT INTO email_verification_tokens (user_id, token_hash, expires_at, used_at)
-       VALUES (?, ?, ?, NULL)`,
+             VALUES (?, ?, ?, NULL)`,
             [userId, tokenHash, expiresAt]
         );
 
+        await sendVerificationEmail(cleanEmail, rawToken);
+
         return res.status(201).json({
             success: true,
-            message: 'User registered successfully. Verify the email using the returned token.',
-            userId: userId,
-            verificationToken: rawToken
+            message: 'User registered successfully. A verification email has been sent.'
         });
     } catch (err) {
         console.error('Registration error:', err);
@@ -274,10 +278,11 @@ exports.requestPasswordReset = async function (req, res) {
              LIMIT 1`,
             [cleanEmail]
         );
+
         if (rows.length === 0) {
             return res.json({
                 success: true,
-                message: 'If that email exists, a reset token has been generated'
+                message: 'If that email exists, a password reset email has been sent'
             });
         }
 
@@ -293,12 +298,12 @@ exports.requestPasswordReset = async function (req, res) {
             [user.id, tokenHash, expiresAt]
         );
 
+        await sendPasswordResetEmail(cleanEmail, rawToken);
+
         return res.json({
             success: true,
-            message: 'If that email exists, a reset token has been generated',
-            resetToken: rawToken
+            message: 'If that email exists, a password reset email has been sent'
         });
-
     } catch (err) {
         console.error('Request reset error:', err);
         return res.status(500).json({
@@ -374,6 +379,65 @@ exports.resetPassword = async function (req, res) {
         });
     } catch (err) {
         console.error('Reset password error:', err);
+        return res.status(500).json({
+            error: 'Internal server error'
+        });
+    }
+};
+
+exports.resendVerificationEmail = async function (req, res) {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({
+                error: 'Email is required'
+            });
+        }
+
+        const cleanEmail = String(email).trim().toLowerCase();
+
+        const [rows] = await db.query(
+            `SELECT id, email_verified
+             FROM users
+             WHERE university_email = ?
+             LIMIT 1`,
+            [cleanEmail]
+        );
+
+        if (rows.length === 0) {
+            return res.json({
+                success: true,
+                message: 'If that email exists, a verification email has been sent'
+            });
+        }
+
+        const user = rows[0];
+
+        if (user.email_verified) {
+            return res.status(400).json({
+                error: 'Email is already verified'
+            });
+        }
+
+        const rawToken = crypto.randomBytes(32).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        await db.query(
+            `INSERT INTO email_verification_tokens (user_id, token_hash, expires_at, used_at)
+             VALUES (?, ?, ?, NULL)`,
+            [user.id, tokenHash, expiresAt]
+        );
+
+        await sendVerificationEmail(cleanEmail, rawToken);
+
+        return res.json({
+            success: true,
+            message: 'Verification email sent'
+        });
+    } catch (err) {
+        console.error('Resend verification error:', err);
         return res.status(500).json({
             error: 'Internal server error'
         });
