@@ -2,8 +2,16 @@
 
 const express = require('express');
 const router = express.Router();
+
 const apiKeyController = require('../manual_controllers/apiKey/index');
 const authJwtMiddleware = require('../middleware/authJwtMiddleware');
+const validate = require('../middleware/validate');
+
+const {
+    createClientSchema,
+    createApiKeySchema,
+    idParamSchema
+} = require('../validators/apiKeyValidators');
 
 /**
  * @swagger
@@ -45,20 +53,13 @@ const authJwtMiddleware = require('../middleware/authJwtMiddleware');
  *     tags: [Developer API Management]
  *     security:
  *       - bearerAuth: []
- *     description: Creates a new API client associated with the authenticated user
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/CreateClientRequest'
- *     responses:
- *       201:
- *         description: API client created successfully
- *       400:
- *         description: Invalid input
  */
-router.post('/clients', authJwtMiddleware, apiKeyController.createClient);
+router.post(
+    '/clients',
+    authJwtMiddleware,
+    validate(createClientSchema),
+    apiKeyController.createClient
+);
 
 /**
  * @swagger
@@ -68,9 +69,6 @@ router.post('/clients', authJwtMiddleware, apiKeyController.createClient);
  *     tags: [Developer API Management]
  *     security:
  *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of API clients
  */
 router.get('/clients', authJwtMiddleware, apiKeyController.listClients);
 
@@ -82,20 +80,13 @@ router.get('/clients', authJwtMiddleware, apiKeyController.listClients);
  *     tags: [Developer API Management]
  *     security:
  *       - bearerAuth: []
- *     description: Generates a new API key for a client. The raw key is returned only once.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/CreateApiKeyRequest'
- *     responses:
- *       201:
- *         description: API key created successfully
- *       403:
- *         description: Invalid client or unauthorized access
  */
-router.post('/keys', authJwtMiddleware, apiKeyController.createApiKey);
+router.post(
+    '/keys',
+    authJwtMiddleware,
+    validate(createApiKeySchema),
+    apiKeyController.createApiKey
+);
 
 /**
  * @swagger
@@ -105,9 +96,6 @@ router.post('/keys', authJwtMiddleware, apiKeyController.createApiKey);
  *     tags: [Developer API Management]
  *     security:
  *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of API keys (without raw keys)
  */
 router.get('/keys', authJwtMiddleware, apiKeyController.listApiKeys);
 
@@ -119,20 +107,13 @@ router.get('/keys', authJwtMiddleware, apiKeyController.listApiKeys);
  *     tags: [Developer API Management]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         example: 5
- *     responses:
- *       200:
- *         description: API key revoked successfully
- *       404:
- *         description: API key not found
  */
-router.post('/keys/:id/revoke', authJwtMiddleware, apiKeyController.revokeApiKey);
+router.post(
+    '/keys/:id/revoke',
+    authJwtMiddleware,
+    validate(idParamSchema, 'params'),
+    apiKeyController.revokeApiKey
+);
 
 /**
  * @swagger
@@ -142,20 +123,12 @@ router.post('/keys/:id/revoke', authJwtMiddleware, apiKeyController.revokeApiKey
  *     tags: [Developer API Management]
  *     security:
  *       - bearerAuth: []
- *     description: Returns usage logs including endpoints accessed, HTTP method, IP address, and timestamp
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         example: 5
- *     responses:
- *       200:
- *         description: API key usage statistics
- *       404:
- *         description: API key not found
  */
-router.get('/keys/:id/stats', authJwtMiddleware, apiKeyController.getKeyStats);
+router.get(
+    '/keys/:id/stats',
+    authJwtMiddleware,
+    validate(idParamSchema, 'params'),
+    apiKeyController.getKeyStats
+);
 
 module.exports = router;

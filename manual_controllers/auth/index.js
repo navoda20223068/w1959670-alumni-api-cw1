@@ -9,34 +9,10 @@ const {
     sendPasswordResetEmail
 } = require('../../services/emailService');
 
-// POST /auth_manual/register
 exports.register = async function (req, res) {
     try {
         const { email, password } = req.body;
-
-        if (!email || !password) {
-            return res.status(400).json({
-                error: 'Email and password are required'
-            });
-        }
-
-        const cleanEmail = String(email).trim().toLowerCase();
-        const cleanPassword = String(password);
-
-        if (
-            !cleanEmail.endsWith('@iit.ac.lk') &&
-            !cleanEmail.endsWith('@westminster.ac.uk')
-        ) {
-            return res.status(400).json({
-                error: 'Must use a university email address'
-            });
-        }
-
-        if (cleanPassword.length < 8) {
-            return res.status(400).json({
-                error: 'Password must be at least 8 characters long'
-            });
-        }
+        const cleanEmail = String(email).toLowerCase();
 
         const [existingUsers] = await db.query(
             'SELECT id FROM users WHERE university_email = ?',
@@ -49,7 +25,7 @@ exports.register = async function (req, res) {
             });
         }
 
-        const passwordHash = await bcrypt.hash(cleanPassword, 10);
+        const passwordHash = await bcrypt.hash(String(password), 10);
 
         const [result] = await db.query(
             `INSERT INTO users (university_email, password_hash, email_verified, role)
@@ -58,7 +34,6 @@ exports.register = async function (req, res) {
         );
 
         const userId = result.insertId;
-
         const rawToken = crypto.randomBytes(32).toString('hex');
         const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -83,24 +58,16 @@ exports.register = async function (req, res) {
     }
 };
 
-// GET /auth_manual/verify/:token
 exports.verifyEmail = async function (req, res) {
     try {
         const rawToken = req.params.token;
-
-        if (!rawToken) {
-            return res.status(400).json({
-                error: 'Verification token is required'
-            });
-        }
-
         const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
         const [rows] = await db.query(
             `SELECT id, user_id, expires_at, used_at
-       FROM email_verification_tokens
-       WHERE token_hash = ?
-       LIMIT 1`,
+             FROM email_verification_tokens
+             WHERE token_hash = ?
+             LIMIT 1`,
             [tokenHash]
         );
 
@@ -118,10 +85,7 @@ exports.verifyEmail = async function (req, res) {
             });
         }
 
-        const now = new Date();
-        const expiresAt = new Date(tokenRecord.expires_at);
-
-        if (now > expiresAt) {
+        if (new Date() > new Date(tokenRecord.expires_at)) {
             return res.status(400).json({
                 error: 'Verification token has expired'
             });
@@ -149,19 +113,10 @@ exports.verifyEmail = async function (req, res) {
     }
 };
 
-// POST /auth_manual/login
-// POST /auth/login
 exports.login = async function (req, res) {
     try {
         const { email, password } = req.body;
-
-        if (!email || !password) {
-            return res.status(400).json({
-                error: 'Email and password are required'
-            });
-        }
-
-        const cleanEmail = String(email).trim().toLowerCase();
+        const cleanEmail = String(email).toLowerCase();
 
         const [rows] = await db.query(
             `SELECT id, university_email, password_hash, email_verified, role
@@ -185,7 +140,7 @@ exports.login = async function (req, res) {
             });
         }
 
-        const passwordMatches = await bcrypt.compare(password, user.password_hash);
+        const passwordMatches = await bcrypt.compare(String(password), user.password_hash);
 
         if (!passwordMatches) {
             return res.status(401).json({
@@ -209,7 +164,7 @@ exports.login = async function (req, res) {
         return res.json({
             success: true,
             message: 'Login successful',
-            token: token,
+            token,
             user: {
                 id: user.id,
                 email: user.university_email,
@@ -224,7 +179,6 @@ exports.login = async function (req, res) {
     }
 };
 
-// POST /auth/logout
 exports.logout = async function (req, res) {
     try {
         return res.json({
@@ -262,14 +216,7 @@ exports.checkAuth = async function (req, res) {
 exports.requestPasswordReset = async function (req, res) {
     try {
         const { email } = req.body;
-
-        if (!email) {
-            return res.status(400).json({
-                error: 'Email is required'
-            });
-        }
-
-        const cleanEmail = String(email).trim().toLowerCase();
+        const cleanEmail = String(email).toLowerCase();
 
         const [rows] = await db.query(
             `SELECT id
@@ -287,7 +234,6 @@ exports.requestPasswordReset = async function (req, res) {
         }
 
         const user = rows[0];
-
         const rawToken = crypto.randomBytes(32).toString('hex');
         const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
         const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
@@ -315,26 +261,13 @@ exports.requestPasswordReset = async function (req, res) {
 exports.resetPassword = async function (req, res) {
     try {
         const { token, newPassword } = req.body;
-
-        if (!token || !newPassword) {
-            return res.status(400).json({
-                error: 'Token and newPassword are required'
-            });
-        }
-
-        if (String(newPassword).length < 8) {
-            return res.status(400).json({
-                error: 'New password must be at least 8 characters long'
-            });
-        }
-
         const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
         const [rows] = await db.query(
             `SELECT id, user_id, expires_at, used_at
-       FROM password_reset_tokens
-       WHERE token_hash = ?
-       LIMIT 1`,
+             FROM password_reset_tokens
+             WHERE token_hash = ?
+             LIMIT 1`,
             [tokenHash]
         );
 
@@ -352,10 +285,7 @@ exports.resetPassword = async function (req, res) {
             });
         }
 
-        const now = new Date();
-        const expiresAt = new Date(tokenRecord.expires_at);
-
-        if (now > expiresAt) {
+        if (new Date() > new Date(tokenRecord.expires_at)) {
             return res.status(400).json({
                 error: 'Reset token has expired'
             });
@@ -388,14 +318,7 @@ exports.resetPassword = async function (req, res) {
 exports.resendVerificationEmail = async function (req, res) {
     try {
         const { email } = req.body;
-
-        if (!email) {
-            return res.status(400).json({
-                error: 'Email is required'
-            });
-        }
-
-        const cleanEmail = String(email).trim().toLowerCase();
+        const cleanEmail = String(email).toLowerCase();
 
         const [rows] = await db.query(
             `SELECT id, email_verified

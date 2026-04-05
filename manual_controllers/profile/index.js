@@ -5,12 +5,6 @@ const { updateProfileCompletionStatus } = require('./profileCompletion');
 
 exports.getMyProfile = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({
-                error: 'Authentication required'
-            });
-        }
-
         const userId = req.user.id;
 
         const [rows] = await db.query(
@@ -41,26 +35,8 @@ exports.getMyProfile = async function (req, res) {
 
 exports.createMyProfile = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({
-                error: 'Authentication required'
-            });
-        }
-
         const userId = req.user.id;
         const { firstName, lastName, biography, linkedinUrl } = req.body;
-
-        if (!firstName || !lastName) {
-            return res.status(400).json({
-                error: 'firstName and lastName are required'
-            });
-        }
-
-        if (linkedinUrl && !/^https?:\/\/.+/i.test(linkedinUrl)) {
-            return res.status(400).json({
-                error: 'LinkedIn URL must be a valid URL'
-            });
-        }
 
         const [existing] = await db.query(
             'SELECT id FROM profiles WHERE user_id = ? LIMIT 1',
@@ -78,10 +54,10 @@ exports.createMyProfile = async function (req, res) {
              VALUES (?, ?, ?, ?, ?)`,
             [
                 userId,
-                String(firstName).trim(),
-                String(lastName).trim(),
-                biography ? String(biography).trim() : null,
-                linkedinUrl ? String(linkedinUrl).trim() : null
+                firstName || null,
+                lastName || null,
+                biography || null,
+                linkedinUrl || null
             ]
         );
 
@@ -102,12 +78,6 @@ exports.createMyProfile = async function (req, res) {
 
 exports.updateMyProfile = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({
-                error: 'Authentication required'
-            });
-        }
-
         const userId = req.user.id;
         const { firstName, lastName, biography, linkedinUrl } = req.body;
 
@@ -122,21 +92,15 @@ exports.updateMyProfile = async function (req, res) {
             });
         }
 
-        if (linkedinUrl && !/^https?:\/\/.+/i.test(linkedinUrl)) {
-            return res.status(400).json({
-                error: 'LinkedIn URL must be a valid URL'
-            });
-        }
-
         await db.query(
             `UPDATE profiles
              SET first_name = ?, last_name = ?, biography = ?, linkedin_url = ?
              WHERE user_id = ?`,
             [
-                firstName ? String(firstName).trim() : null,
-                lastName ? String(lastName).trim() : null,
-                biography ? String(biography).trim() : null,
-                linkedinUrl ? String(linkedinUrl).trim() : null,
+                firstName || null,
+                lastName || null,
+                biography || null,
+                linkedinUrl || null,
                 userId
             ]
         );
@@ -157,18 +121,8 @@ exports.updateMyProfile = async function (req, res) {
 
 exports.addDegree = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
         const { degreeName, institutionName, officialUrl, completionDate } = req.body;
-
-        if (!degreeName || !institutionName) {
-            return res.status(400).json({
-                error: 'degreeName and institutionName are required'
-            });
-        }
 
         const [result] = await db.query(
             `INSERT INTO degrees (user_id, degree_name, institution_name, official_url, completion_date)
@@ -197,10 +151,6 @@ exports.addDegree = async function (req, res) {
 
 exports.getDegrees = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
 
         const [rows] = await db.query(
@@ -220,15 +170,11 @@ exports.getDegrees = async function (req, res) {
 
 exports.updateDegree = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
         const degreeId = req.params.id;
         const { degreeName, institutionName, officialUrl, completionDate } = req.body;
 
-        await db.query(
+        const [result] = await db.query(
             `UPDATE degrees
              SET degree_name = ?, institution_name = ?, official_url = ?, completion_date = ?
              WHERE id = ? AND user_id = ?`,
@@ -241,6 +187,12 @@ exports.updateDegree = async function (req, res) {
                 userId
             ]
         );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                error: 'Degree not found'
+            });
+        }
 
         await updateProfileCompletionStatus(userId);
 
@@ -256,17 +208,19 @@ exports.updateDegree = async function (req, res) {
 
 exports.deleteDegree = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
         const degreeId = req.params.id;
 
-        await db.query(
+        const [result] = await db.query(
             `DELETE FROM degrees WHERE id = ? AND user_id = ?`,
             [degreeId, userId]
         );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                error: 'Degree not found'
+            });
+        }
 
         await updateProfileCompletionStatus(userId);
 
@@ -282,18 +236,8 @@ exports.deleteDegree = async function (req, res) {
 
 exports.addCertification = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
         const { certificationName, providerName, officialUrl, completionDate } = req.body;
-
-        if (!certificationName || !providerName) {
-            return res.status(400).json({
-                error: 'certificationName and providerName are required'
-            });
-        }
 
         const [result] = await db.query(
             `INSERT INTO certifications (user_id, certification_name, provider_name, official_url, completion_date)
@@ -322,10 +266,6 @@ exports.addCertification = async function (req, res) {
 
 exports.getCertifications = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
 
         const [rows] = await db.query(
@@ -345,15 +285,11 @@ exports.getCertifications = async function (req, res) {
 
 exports.updateCertification = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
         const id = req.params.id;
         const { certificationName, providerName, officialUrl, completionDate } = req.body;
 
-        await db.query(
+        const [result] = await db.query(
             `UPDATE certifications
              SET certification_name = ?, provider_name = ?, official_url = ?, completion_date = ?
              WHERE id = ? AND user_id = ?`,
@@ -366,6 +302,12 @@ exports.updateCertification = async function (req, res) {
                 userId
             ]
         );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                error: 'Certification not found'
+            });
+        }
 
         await updateProfileCompletionStatus(userId);
 
@@ -381,17 +323,19 @@ exports.updateCertification = async function (req, res) {
 
 exports.deleteCertification = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
         const id = req.params.id;
 
-        await db.query(
+        const [result] = await db.query(
             `DELETE FROM certifications WHERE id = ? AND user_id = ?`,
             [id, userId]
         );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                error: 'Certification not found'
+            });
+        }
 
         await updateProfileCompletionStatus(userId);
 
@@ -407,18 +351,8 @@ exports.deleteCertification = async function (req, res) {
 
 exports.addLicence = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
         const { licenceName, awardingBody, officialUrl, completionDate } = req.body;
-
-        if (!licenceName || !awardingBody) {
-            return res.status(400).json({
-                error: 'licenceName and awardingBody are required'
-            });
-        }
 
         const [result] = await db.query(
             `INSERT INTO licences (user_id, licence_name, awarding_body, official_url, completion_date)
@@ -441,10 +375,6 @@ exports.addLicence = async function (req, res) {
 
 exports.getLicences = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
 
         const [rows] = await db.query(
@@ -464,20 +394,22 @@ exports.getLicences = async function (req, res) {
 
 exports.updateLicence = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
         const id = req.params.id;
         const { licenceName, awardingBody, officialUrl, completionDate } = req.body;
 
-        await db.query(
+        const [result] = await db.query(
             `UPDATE licences
              SET licence_name = ?, awarding_body = ?, official_url = ?, completion_date = ?
              WHERE id = ? AND user_id = ?`,
             [licenceName, awardingBody, officialUrl || null, completionDate || null, id, userId]
         );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                error: 'Licence not found'
+            });
+        }
 
         await updateProfileCompletionStatus(userId);
 
@@ -493,16 +425,19 @@ exports.updateLicence = async function (req, res) {
 
 exports.deleteLicence = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
+        const id = req.params.id;
 
-        await db.query(
+        const [result] = await db.query(
             `DELETE FROM licences WHERE id = ? AND user_id = ?`,
-            [req.params.id, userId]
+            [id, userId]
         );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                error: 'Licence not found'
+            });
+        }
 
         await updateProfileCompletionStatus(userId);
 
@@ -518,18 +453,8 @@ exports.deleteLicence = async function (req, res) {
 
 exports.addCourse = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
         const { courseName, providerName, officialUrl, completionDate } = req.body;
-
-        if (!courseName || !providerName) {
-            return res.status(400).json({
-                error: 'courseName and providerName are required'
-            });
-        }
 
         const [result] = await db.query(
             `INSERT INTO professional_courses (user_id, course_name, provider_name, official_url, completion_date)
@@ -552,10 +477,6 @@ exports.addCourse = async function (req, res) {
 
 exports.getCourses = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
 
         const [rows] = await db.query(
@@ -575,20 +496,22 @@ exports.getCourses = async function (req, res) {
 
 exports.updateCourse = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
         const id = req.params.id;
         const { courseName, providerName, officialUrl, completionDate } = req.body;
 
-        await db.query(
+        const [result] = await db.query(
             `UPDATE professional_courses
              SET course_name = ?, provider_name = ?, official_url = ?, completion_date = ?
              WHERE id = ? AND user_id = ?`,
             [courseName, providerName, officialUrl || null, completionDate || null, id, userId]
         );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                error: 'Course not found'
+            });
+        }
 
         await updateProfileCompletionStatus(userId);
 
@@ -604,16 +527,19 @@ exports.updateCourse = async function (req, res) {
 
 exports.deleteCourse = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
+        const id = req.params.id;
 
-        await db.query(
+        const [result] = await db.query(
             `DELETE FROM professional_courses WHERE id = ? AND user_id = ?`,
-            [req.params.id, userId]
+            [id, userId]
         );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                error: 'Course not found'
+            });
+        }
 
         await updateProfileCompletionStatus(userId);
 
@@ -629,18 +555,8 @@ exports.deleteCourse = async function (req, res) {
 
 exports.addEmployment = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
         const { companyName, jobTitle, startDate, endDate, isCurrent } = req.body;
-
-        if (!companyName || !jobTitle) {
-            return res.status(400).json({
-                error: 'companyName and jobTitle are required'
-            });
-        }
 
         const [result] = await db.query(
             `INSERT INTO employment_history (user_id, company_name, job_title, start_date, end_date, is_current)
@@ -663,10 +579,6 @@ exports.addEmployment = async function (req, res) {
 
 exports.getEmployment = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
 
         const [rows] = await db.query(
@@ -686,20 +598,22 @@ exports.getEmployment = async function (req, res) {
 
 exports.updateEmployment = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
         const id = req.params.id;
         const { companyName, jobTitle, startDate, endDate, isCurrent } = req.body;
 
-        await db.query(
+        const [result] = await db.query(
             `UPDATE employment_history
              SET company_name = ?, job_title = ?, start_date = ?, end_date = ?, is_current = ?
              WHERE id = ? AND user_id = ?`,
             [companyName, jobTitle, startDate || null, endDate || null, isCurrent ? 1 : 0, id, userId]
         );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                error: 'Employment history record not found'
+            });
+        }
 
         await updateProfileCompletionStatus(userId);
 
@@ -715,16 +629,19 @@ exports.updateEmployment = async function (req, res) {
 
 exports.deleteEmployment = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
-
         const userId = req.user.id;
+        const id = req.params.id;
 
-        await db.query(
+        const [result] = await db.query(
             `DELETE FROM employment_history WHERE id = ? AND user_id = ?`,
-            [req.params.id, userId]
+            [id, userId]
         );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                error: 'Employment history record not found'
+            });
+        }
 
         await updateProfileCompletionStatus(userId);
 
@@ -740,12 +657,6 @@ exports.deleteEmployment = async function (req, res) {
 
 exports.uploadProfileImage = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({
-                error: 'Authentication required'
-            });
-        }
-
         if (!req.file) {
             return res.status(400).json({
                 error: 'No image file uploaded'
@@ -778,8 +689,8 @@ exports.uploadProfileImage = async function (req, res) {
         return res.json({
             success: true,
             message: 'Profile image uploaded successfully',
-            imagePath: imagePath,
-            completionStatus: completionStatus
+            imagePath,
+            completionStatus
         });
     } catch (err) {
         console.error('Upload profile image error:', err);

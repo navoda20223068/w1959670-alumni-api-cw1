@@ -4,7 +4,11 @@ const db = require('../../db');
 
 exports.getAlumniOfTheDay = async function (req, res) {
     try {
-        const today = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const today = `${yyyy}-${mm}-${dd}`;
 
         const [rows] = await db.query(
             `SELECT u.id AS user_id,
@@ -31,7 +35,6 @@ exports.getAlumniOfTheDay = async function (req, res) {
             success: true,
             alumnus: rows[0]
         });
-
     } catch (err) {
         console.error('Get alumni of the day error:', err);
         return res.status(500).json({

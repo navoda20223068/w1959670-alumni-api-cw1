@@ -5,39 +5,15 @@ const { finalizeWinnerForDate } = require('../../services/biddingFinalizer');
 
 exports.placeBid = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({
-                error: 'Authentication required'
-            });
-        }
-
         const userId = req.user.id;
         const { bidDate, amount } = req.body;
-
-        if (!bidDate || amount === undefined || amount === null) {
-            return res.status(400).json({
-                error: 'bidDate and amount are required'
-            });
-        }
-
         const numericAmount = Number(amount);
-
-        if (Number.isNaN(numericAmount) || numericAmount <= 0) {
-            return res.status(400).json({
-                error: 'Amount must be a positive number'
-            });
-        }
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
         const inputDate = new Date(bidDate);
-
-        if (isNaN(inputDate.getTime())) {
-            return res.status(400).json({
-                error: 'Invalid bidDate format'
-            });
-        }
+        inputDate.setHours(0, 0, 0, 0);
 
         if (inputDate < today) {
             return res.status(400).json({
@@ -165,7 +141,6 @@ exports.placeBid = async function (req, res) {
             bidId,
             status: myStatus
         });
-
     } catch (err) {
         console.error('Place bid error:', err);
         return res.status(500).json({
@@ -176,23 +151,10 @@ exports.placeBid = async function (req, res) {
 
 exports.increaseBid = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({
-                error: 'Authentication required'
-            });
-        }
-
         const userId = req.user.id;
         const bidId = req.params.id;
         const { amount } = req.body;
-
         const numericAmount = Number(amount);
-
-        if (Number.isNaN(numericAmount) || numericAmount <= 0) {
-            return res.status(400).json({
-                error: 'Amount must be a positive number'
-            });
-        }
 
         const [rows] = await db.query(
             `SELECT id, user_id, bid_date, amount, status
@@ -270,7 +232,6 @@ exports.increaseBid = async function (req, res) {
             bidId: Number(bidId),
             status: myStatus
         });
-
     } catch (err) {
         console.error('Increase bid error:', err);
         return res.status(500).json({
@@ -281,12 +242,6 @@ exports.increaseBid = async function (req, res) {
 
 exports.getMyBids = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({
-                error: 'Authentication required'
-            });
-        }
-
         const userId = req.user.id;
 
         const [rows] = await db.query(
@@ -301,7 +256,6 @@ exports.getMyBids = async function (req, res) {
             success: true,
             bids: rows
         });
-
     } catch (err) {
         console.error('Get my bids error:', err);
         return res.status(500).json({
@@ -312,12 +266,6 @@ exports.getMyBids = async function (req, res) {
 
 exports.getMyBidStatusForDate = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({
-                error: 'Authentication required'
-            });
-        }
-
         const userId = req.user.id;
         const bidDate = req.params.date;
 
@@ -339,7 +287,6 @@ exports.getMyBidStatusForDate = async function (req, res) {
             success: true,
             bid: rows[0]
         });
-
     } catch (err) {
         console.error('Get bid status error:', err);
         return res.status(500).json({
@@ -350,12 +297,6 @@ exports.getMyBidStatusForDate = async function (req, res) {
 
 exports.finalizeWinner = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({
-                error: 'Authentication required'
-            });
-        }
-
         if (req.user.role !== 'admin') {
             return res.status(403).json({
                 error: 'Admin access required'
@@ -363,15 +304,13 @@ exports.finalizeWinner = async function (req, res) {
         }
 
         const bidDate = req.params.date;
-
         const winningBid = await finalizeWinnerForDate(bidDate);
 
         return res.json({
             success: true,
             message: 'Winner finalized',
-            winningBid: winningBid
+            winningBid
         });
-
     } catch (err) {
         console.error('Finalize winner error:', err);
 
@@ -395,12 +334,6 @@ exports.finalizeWinner = async function (req, res) {
 
 exports.cancelBid = async function (req, res) {
     try {
-        if (!req.user) {
-            return res.status(401).json({
-                error: 'Authentication required'
-            });
-        }
-
         const userId = req.user.id;
         const bidId = req.params.id;
 
@@ -471,7 +404,6 @@ exports.cancelBid = async function (req, res) {
             message: 'Bid cancelled successfully',
             bidId: Number(bidId)
         });
-
     } catch (err) {
         console.error('Cancel bid error:', err);
         return res.status(500).json({
