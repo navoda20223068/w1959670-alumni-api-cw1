@@ -20,7 +20,7 @@ const profileRoutes = require('./routes/profileRoutes');
 const biddingRoutes = require('./routes/biddingRoutes');
 const apiKeyRoutes = require('./routes/apiKeyRoutes');
 const publicApiRoutes = require('./routes/publicApiRoutes');
-
+const analyticsRoutes = require('./routes/analyticsRoutes');
 const app = express();
 module.exports = app;
 
@@ -178,7 +178,7 @@ app.use('/profile', profileRoutes);
 app.use('/bidding', biddingRoutes);
 app.use('/developer', apiKeyRoutes);
 app.use('/api', publicApiRoutes);
-
+app.use('/analytics', analyticsRoutes);
 /* =========================================================
    ERROR HANDLING
 ========================================================= */
