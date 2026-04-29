@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Alumni Analytics</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f5f7fb;
+            color: #222;
+        }
+
+        nav {
+            background: #1f2937;
+            padding: 14px 30px;
+        }
+
+        nav a {
+            color: white;
+            margin-right: 20px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .container {
+            padding: 30px;
+        }
+
+        .filter-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .filters {
+            display: flex;
+            gap: 16px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .filters label {
+            display: block;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: #374151;
+        }
+
+        .filters select {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            min-width: 180px;
+        }
+
+        button, .btn {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 8px;
+            background: #1f2937;
+            color: white;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .section h2 {
+            margin-top: 0;
+            font-size: 18px;
+            border-bottom: 2px solid #f3f4f6;
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+        }
+
+        .insight {
+            background: #f0f9ff;
+            border-left: 4px solid #3b82f6;
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            color: #1e3a5f;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+
+        th {
+            background: #f3f4f6;
+            font-weight: bold;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .badge-red    { background: #fee2e2; color: #b91c1c; }
+        .badge-amber  { background: #fef3c7; color: #92400e; }
+        .badge-green  { background: #dcfce7; color: #166534; }
+
+        .export-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .empty {
+            color: #777;
+            font-size: 14px;
+            padding: 10px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+<nav>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/alumni">Alumni</a>
+    <a href="/analytics">Analytics</a>
+</nav>
+
+<div class="container">
+    <h1>Alumni Intelligence Report</h1>
+
+    <div class="filter-card">
+        <form method="GET" action="/analytics" class="filters">
+            <div>
+                <label for="programme">Programme</label>
+                <select name="programme" id="programme">
+                    <option value="">All Programmes</option>
+                    <% programmes.forEach(p => { %>
+                        <option value="<%= p.programme %>"
+                                <%= filters.programme === p.programme ? 'selected' : '' %>>
+                            <%= p.programme %>
+                        </option>
+                    <% }) %>
+                </select>
+            </div>
+
+            <div>
+                <label for="graduationYear">Graduation Year</label>
+                <select name="graduationYear" id="graduationYear">
+                    <option value="">All Years</option>
+                    <% graduationYears.forEach(y => { %>
+                        <option value="<%= y.year %>"
+                                <%= filters.graduationYear == y.year ? 'selected' : '' %>>
+                            <%= y.year %>
+                        </option>
+                    <% }) %>
+                </select>
+            </div>
+
+            <button type="submit">Apply Filters</button>
+            <a href="/analytics" class="btn btn-secondary">Clear</a>
+        </form>
+    </div>
+
+    <div class="export-bar">
+        <button onclick="exportAllToCSV()">Export Report as CSV</button>
+        <a href="/logout" class="btn btn-secondary">Logout</a>
+    </div>
+
+    <%
+    const topIndustry = industryData[0];
+    const topEmployer = topEmployers[0];
+    const topCert = certifications[0];
+    %>
+
+    <!-- Skills Gap -->
+    <div class="section">
+        <h2>Curriculum Skills Gap Analysis</h2>
+
+        <% if (topCert) { %>
+            <div class="insight">
+                The most common post-graduation certification is <strong><%= topCert.certification_name %></strong>
+                (<%= topCert.count %> alumni), suggesting this skill is not adequately covered in the current curriculum.
+            </div>
+        <% } %>
+
+        <% if (!skillsGap.length) { %>
+            <p class="empty">No data available.</p>
+        <% } else { %>
+            <table id="skillsGapTable">
+                <thead>
+                <tr>
+                    <th>Skill Category</th>
+                    <th>Total Count</th>
+                    <th>Gap Status</th>
+                </tr>
+                </thead>
+                <tbody>
+                <% skillsGap.forEach(row => {
+                    let badgeClass = 'badge-green';
+                    let statusLabel = 'Healthy';
+                    if (row.count <= 2) { badgeClass = 'badge-red'; statusLabel = 'Critical'; }
+                    else if (row.count <= 5) { badgeClass = 'badge-amber'; statusLabel = 'Emerging'; }
+                %>
+                <tr>
+                    <td><%= row.skill %></td>
+                    <td><%= row.count %></td>
+                    <td><span class="badge <%= badgeClass %>"><%= statusLabel %></span></td>
+                </tr>
+                <% }) %>
+                </tbody>
+            </table>
+        <% } %>
+    </div>
+
+    <!-- Industry Distribution -->
+    <div class="section">
+        <h2>Industry Sector Distribution</h2>
+
+        <% if (topIndustry) { %>
+            <div class="insight">
+                <strong><%= topIndustry.industry_sector %></strong> is the most common industry sector
+                among alumni with <strong><%= topIndustry.count %></strong> graduates currently working there.
+            </div>
+        <% } %>
+
+        <% if (!industryData.length) { %>
+            <p class="empty">No data available.</p>
+        <% } else { %>
+            <table id="industryTable">
+                <thead>
+                <tr>
+                    <th>Industry Sector</th>
+                    <th>Alumni Count</th>
+                </tr>
+                </thead>
+                <tbody>
+                <% industryData.forEach(row => { %>
+                    <tr>
+                        <td><%= row.industry_sector %></td>
+                        <td><%= row.count %></td>
+                    </tr>
+                <% }) %>
+                </tbody>
+            </table>
+        <% } %>
+    </div>
+
+    <!-- Top Employers -->
+    <div class="section">
+        <h2>Top Employers</h2>
+
+        <% if (topEmployer) { %>
+            <div class="insight">
+                <strong><%= topEmployer.company_name %></strong> employs the most alumni
+                (<%= topEmployer.count %> graduates), making it a key industry partner to engage.
+            </div>
+        <% } %>
+
+        <% if (!topEmployers.length) { %>
+            <p class="empty">No data available.</p>
+        <% } else { %>
+            <table id="employersTable">
+                <thead>
+                <tr>
+                    <th>Employer</th>
+                    <th>Alumni Count</th>
+                </tr>
+                </thead>
+                <tbody>
+                <% topEmployers.forEach(row => { %>
+                    <tr>
+                        <td><%= row.company_name %></td>
+                        <td><%= row.count %></td>
+                    </tr>
+                <% }) %>
+                </tbody>
+            </table>
+        <% } %>
+    </div>
+
+    <!-- Most Common Job Titles -->
+    <div class="section">
+        <h2>Most Common Job Titles</h2>
+
+        <% if (!jobTitles.length) { %>
+            <p class="empty">No data available.</p>
+        <% } else { %>
+            <table id="jobTitlesTable">
+                <thead>
+                <tr>
+                    <th>Job Title</th>
+                    <th>Alumni Count</th>
+                </tr>
+                </thead>
+                <tbody>
+                <% jobTitles.forEach(row => { %>
+                    <tr>
+                        <td><%= row.job_title %></td>
+                        <td><%= row.count %></td>
+                    </tr>
+                <% }) %>
+                </tbody>
+            </table>
+        <% } %>
+    </div>
+
+    <!-- Certification Trends -->
+    <div class="section">
+        <h2>Post-Graduation Certification Trends</h2>
+
+        <% if (!certifications.length) { %>
+            <p class="empty">No data available.</p>
+        <% } else { %>
+            <table id="certificationsTable">
+                <thead>
+                <tr>
+                    <th>Certification</th>
+                    <th>Alumni Count</th>
+                </tr>
+                </thead>
+                <tbody>
+                <% certifications.forEach(row => { %>
+                    <tr>
+                        <td><%= row.certification_name %></td>
+                        <td><%= row.count %></td>
+                    </tr>
+                <% }) %>
+                </tbody>
+            </table>
+        <% } %>
+    </div>
+
+</div>
+
+<script>
+    function exportAllToCSV() {
+        const sections = [
+            { id: 'skillsGapTable',      title: 'Skills Gap' },
+            { id: 'industryTable',       title: 'Industry Distribution' },
+            { id: 'employersTable',      title: 'Top Employers' },
+            { id: 'jobTitlesTable',      title: 'Job Titles' },
+            { id: 'certificationsTable', title: 'Certification Trends' }
+        ];
+
+        let csv = '';
+
+        sections.forEach(({ id, title }) => {
+            const table = document.getElementById(id);
+            if (!table) return;
+
+            csv += `${title}\n`;
+
+            Array.from(table.querySelectorAll('tr')).forEach(row => {
+                const cells = Array.from(row.querySelectorAll('th, td'));
+                csv += cells.map(c => `"${c.innerText.replace(/"/g, '""')}"`).join(',') + '\n';
+            });
+
+            csv += '\n';
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'alumni-intelligence-report.csv';
+        link.click();
+    }
+</script>
+
+</body>
+</html>

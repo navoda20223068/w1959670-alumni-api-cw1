@@ -92,4 +92,47 @@ router.get('/logout', (req, res) => {
     res.redirect('/login');
 });
 
+router.get('/analytics', authPageMiddleware, async (req, res) => {
+    try {
+        const { programme, graduationYear } = req.query;
+        const filters = { programme, graduationYear };
+
+        const [
+            industryData,
+            topEmployers,
+            jobTitles,
+            certifications,
+            skillsGap,
+            graduationYears,
+            programmes
+        ] = await Promise.all([
+            analyticsGet('/analytics/industry-distribution', filters),
+            analyticsGet('/analytics/top-employers', filters),
+            analyticsGet('/analytics/job-titles', filters),
+            analyticsGet('/analytics/certification-trends', filters),
+            analyticsGet('/analytics/skills-gap', filters),
+            analyticsGet('/analytics/graduation-years'),
+            analyticsGet('/analytics/programmes')
+        ]);
+
+        res.render('analytics', {
+            industryData,
+            topEmployers,
+            jobTitles,
+            certifications,
+            skillsGap,
+            graduationYears,
+            programmes,
+            filters: {
+                programme: programme || '',
+                graduationYear: graduationYear || ''
+            }
+        });
+
+    } catch (err) {
+        console.error('Analytics page error:', err);
+        res.status(500).send('Error loading analytics page');
+    }
+});
+
 module.exports = router;
