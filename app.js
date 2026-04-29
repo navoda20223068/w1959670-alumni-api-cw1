@@ -21,6 +21,7 @@ const biddingRoutes = require('./routes/biddingRoutes');
 const apiKeyRoutes = require('./routes/apiKeyRoutes');
 const publicApiRoutes = require('./routes/publicApiRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const pageRoutes = require('./routes/pageRoutes');
 const app = express();
 module.exports = app;
 
@@ -34,11 +35,18 @@ const IS_DIRECT_RUN = !module.parent;
 // Required for correct IP handling behind Nginx
 app.set('trust proxy', 1);
 
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
 /* =========================================================
    SECURITY MIDDLEWARE
 ========================================================= */
 
-app.use(helmet());
+app.use(
+    helmet({
+      contentSecurityPolicy: false
+    })
+);
 
 app.use(cors({
   origin: process.env.ALLOWED_ORIGIN || '*',
@@ -179,6 +187,7 @@ app.use('/bidding', biddingRoutes);
 app.use('/developer', apiKeyRoutes);
 app.use('/api', publicApiRoutes);
 app.use('/analytics', analyticsRoutes);
+app.use('/', pageRoutes);
 /* =========================================================
    ERROR HANDLING
 ========================================================= */

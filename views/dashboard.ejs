@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Alumni Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f5f7fb;
+            color: #222;
+        }
+
+        nav {
+            background: #1f2937;
+            padding: 14px 30px;
+        }
+
+        nav a {
+            color: white;
+            margin-right: 20px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .container {
+            padding: 30px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(350px, 1fr));
+            gap: 24px;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            height: 360px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            position: relative;
+        }
+
+        .chart-card h2 {
+            margin-top: 0;
+            font-size: 20px;
+        }
+
+        .empty-state {
+            color: #777;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 290px !important;
+        }
+    </style>
+</head>
+
+<body>
+
+<nav>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/alumni">Alumni</a>
+    <a href="/analytics">Analytics</a>
+</nav>
+
+<div class="container">
+    <h1>Alumni Analytics Dashboard</h1>
+
+    <div class="grid">
+        <div class="chart-card">
+            <h2>Industry Distribution</h2>
+            <canvas id="industryChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h2>Top Employers</h2>
+            <canvas id="employerChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h2>Most Common Job Titles</h2>
+            <canvas id="jobTitleChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h2>Geographic Distribution</h2>
+            <canvas id="locationChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h2>Graduation Year Distribution</h2>
+            <canvas id="graduationChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h2>Programme Distribution</h2>
+            <canvas id="programmeChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h2>Certification Trends</h2>
+            <canvas id="certificationChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h2>Skills Gap Overview</h2>
+            <canvas id="skillsGapChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    const industryData = <%- JSON.stringify(industryData || []) %>;
+    const topEmployers = <%- JSON.stringify(topEmployers || []) %>;
+    const jobTitles = <%- JSON.stringify(jobTitles || []) %>;
+    const locations = <%- JSON.stringify(locations || []) %>;
+    const graduationYears = <%- JSON.stringify(graduationYears || []) %>;
+    const programmes = <%- JSON.stringify(programmes || []) %>;
+    const certifications = <%- JSON.stringify(certifications || []) %>;
+    const skillsGap = <%- JSON.stringify(skillsGap || []) %>;
+
+    const chartColours = [
+        '#4f46e5',
+        '#22c55e',
+        '#f59e0b',
+        '#ef4444',
+        '#3b82f6',
+        '#a855f7',
+        '#14b8a6',
+        '#f97316'
+    ];
+
+    function showEmptyState(id) {
+        const canvas = document.getElementById(id);
+        canvas.style.display = 'none';
+
+        const emptyMessage = document.createElement('p');
+        emptyMessage.className = 'empty-state';
+        emptyMessage.textContent = 'No data available for this chart.';
+
+        canvas.parentElement.appendChild(emptyMessage);
+    }
+
+    function createChart(id, type, labels, values, label, xAxisLabel = 'Category', yAxisLabel = 'Count') {
+        if (!labels.length || !values.length) {
+            showEmptyState(id);
+            return;
+        }
+
+        new Chart(document.getElementById(id), {
+            type,
+            data: {
+                labels,
+                datasets: [{
+                    label,
+                    data: values,
+                    backgroundColor: chartColours,
+                    borderColor: chartColours,
+                    borderWidth: 1,
+                    fill: type === 'line' ? false : true
+                }]
+            },
+            options: {
+                indexAxis: label === 'Top Employers' ? 'y' : 'x',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true
+                    },
+                    tooltip: {
+                        enabled: true
+                    }
+                },
+                scales: type === 'pie' || type === 'doughnut' || type === 'radar' ? {} : {
+                    x: {
+                        title: {
+                            display: true,
+                            text: label === 'Top Employers' ? 'Count' : xAxisLabel
+                        },
+                        ticks: {
+                            precision: 0
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: label === 'Top Employers' ? 'Employer' : yAxisLabel
+                        },
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    createChart(
+        'industryChart',
+        'bar',
+        industryData.map(x => x.industry_sector),
+        industryData.map(x => x.count),
+        'Alumni by Industry',
+        'Industry Sector',
+        'Alumni Count'
+    );
+
+    createChart(
+        'employerChart',
+        'bar',
+        topEmployers.slice(0, 5).map(x => x.company_name),
+        topEmployers.slice(0, 5).map(x => x.count),
+        'Top Employers',
+        'Employer',
+        'Alumni Count'
+    );
+
+    createChart(
+        'jobTitleChart',
+        'bar',
+        jobTitles.map(x => x.job_title),
+        jobTitles.map(x => x.count),
+        'Job Titles',
+        'Job Title',
+        'Alumni Count'
+    );
+
+    createChart(
+        'locationChart',
+        'pie',
+        locations.map(x => x.location),
+        locations.map(x => x.count),
+        'Locations'
+    );
+
+    createChart(
+        'graduationChart',
+        'line',
+        graduationYears.map(x => x.year),
+        graduationYears.map(x => x.count),
+        'Graduation Years',
+        'Graduation Year',
+        'Alumni Count'
+    );
+
+    createChart(
+        'programmeChart',
+        'bar',
+        programmes.map(x => x.programme),
+        programmes.map(x => x.count),
+        'Programmes',
+        'Programme',
+        'Alumni Count'
+    );
+
+    createChart(
+        'certificationChart',
+        'doughnut',
+        certifications.map(x => x.certification_name),
+        certifications.map(x => x.count),
+        'Certifications'
+    );
+
+    createChart(
+        'skillsGapChart',
+        'radar',
+        skillsGap.map(x => x.skill),
+        skillsGap.map(x => x.count),
+        'Skills Gap'
+    );
+</script>
+
+</body>
+</html>
