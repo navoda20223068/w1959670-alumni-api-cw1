@@ -1,6 +1,7 @@
 'use strict';
 
 const db = require('../db');
+const { sendBidWonEmail, sendBidLostEmail } = require('./emailService');
 
 async function finalizeWinnerForDate(bidDate) {
     const [alreadyFinalized] = await db.query(
@@ -70,6 +71,7 @@ async function finalizeWinnerForDate(bidDate) {
         );
     }
 
+    // Mark winning bid
     await db.query(
         `UPDATE bids
          SET status = 'won'
@@ -77,6 +79,7 @@ async function finalizeWinnerForDate(bidDate) {
         [winningBid.id]
     );
 
+    // Mark all other bids as lost and fetch loser emails in one step
     await db.query(
         `UPDATE bids
          SET status = 'lost'
@@ -86,11 +89,41 @@ async function finalizeWinnerForDate(bidDate) {
         [bidDate, winningBid.id]
     );
 
+    // Record appearance
     await db.query(
         `INSERT INTO appearance_history (user_id, featured_date, won_by_bid_id, event_bonus_used)
          VALUES (?, ?, ?, ?)`,
         [winningBid.user_id, bidDate, winningBid.id, eventBonusUsed]
     );
+
+    // Fetch winner email
+    const [winnerRows] = await db.query(
+        `SELECT university_email FROM users WHERE id = ? LIMIT 1`,
+        [winningBid.user_id]
+    );
+
+    // Fetch loser emails
+    const [loserRows] = await db.query(
+        `SELECT u.university_email
+         FROM bids b
+         JOIN users u ON b.user_id = u.id
+         WHERE b.bid_date = ?
+           AND b.status = 'lost'`,
+        [bidDate]
+    );
+
+    // Send notifications — fire and forget, don't let email failures break finalization
+    if (winnerRows.length > 0) {
+        sendBidWonEmail(winnerRows[0].university_email, bidDate).catch(err =>
+            console.error('Failed to send win email:', err)
+        );
+    }
+
+    loserRows.forEach(({ university_email }) => {
+        sendBidLostEmail(university_email, bidDate).catch(err =>
+            console.error('Failed to send loss email:', err)
+        );
+    });
 
     return winningBid;
 }

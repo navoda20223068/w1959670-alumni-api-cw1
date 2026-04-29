@@ -70,6 +70,40 @@ async function sendPasswordResetEmail(to, token) {
     return sendMail({ to, subject, text, html });
 }
 
+async function sendBidWonEmail(to, featuredDate) {
+    const subject = 'You won the Alumni of the Day bid!';
+    const text =
+        `Congratulations! Your bid was successful.\n\n` +
+        `You have been selected as Alumni of the Day for ${featuredDate}.\n` +
+        `Your profile will be featured on the platform for the entire day.`;
+
+    const html = `
+        <h2>Congratulations!</h2>
+        <p>Your bid was successful.</p>
+        <p>You have been selected as <strong>Alumni of the Day</strong> for <strong>${featuredDate}</strong>.</p>
+        <p>Your profile will be featured on the platform for the entire day.</p>
+    `;
+
+    return sendMail({ to, subject, text, html });
+}
+
+async function sendBidLostEmail(to, featuredDate) {
+    const subject = 'Your bid was unsuccessful';
+    const text =
+        `Thank you for participating in the Alumni of the Day bid for ${featuredDate}.\n\n` +
+        `Unfortunately your bid was not successful this time.\n` +
+        `You are welcome to place a new bid for a future date.`;
+
+    const html = `
+        <h2>Bid Unsuccessful</h2>
+        <p>Thank you for participating in the Alumni of the Day bid for <strong>${featuredDate}</strong>.</p>
+        <p>Unfortunately your bid was not successful this time.</p>
+        <p>You are welcome to place a new bid for a future date.</p>
+    `;
+
+    return sendMail({ to, subject, text, html });
+}
+
 async function verifyEmailTransport() {
     return transporter.verify();
 }
@@ -78,5 +112,7 @@ module.exports = {
     sendMail,
     sendVerificationEmail,
     sendPasswordResetEmail,
+    sendBidWonEmail,
+    sendBidLostEmail,
     verifyEmailTransport
 };
