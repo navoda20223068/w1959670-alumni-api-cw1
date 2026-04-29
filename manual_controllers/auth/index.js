@@ -161,6 +161,14 @@ exports.login = async function (req, res) {
             }
         );
 
+        // Set httpOnly cookie for browser-based page access (dashboard, alumni)
+        res.cookie('authToken', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 1000 // 1 hour, matches JWT expiry
+        });
+
         return res.json({
             success: true,
             message: 'Login successful',
@@ -181,6 +189,8 @@ exports.login = async function (req, res) {
 
 exports.logout = async function (req, res) {
     try {
+        res.clearCookie('authToken');
+
         return res.json({
             success: true,
             message: 'Logout successful. Remove the token on the client side.'

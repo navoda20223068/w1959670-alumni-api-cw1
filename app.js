@@ -41,6 +41,9 @@ app.set('views', path.join(__dirname, 'views'));
 /* =========================================================
    SECURITY MIDDLEWARE
 ========================================================= */
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
+
 
 app.use(
     helmet({

@@ -3,10 +3,10 @@
 const express = require('express');
 const router = express.Router();
 const { analyticsGet } = require('../services/apiClient');
-const db = require('../db');
+const authPageMiddleware = require('../middleware/authPageMiddleware');
 
 // Dashboard page
-router.get('/dashboard', async (req, res) => {
+router.get('/dashboard', authPageMiddleware, async (req, res) => {
     try {
         const { programme, graduationYear } = req.query;
         const filters = { programme, graduationYear };
@@ -53,7 +53,7 @@ router.get('/dashboard', async (req, res) => {
 });
 
 
-router.get('/alumni', async (req, res) => {
+router.get('/alumni', authPageMiddleware, async (req, res) => {
     try {
         const { programme, graduationYear, industry } = req.query;
 
@@ -81,6 +81,15 @@ router.get('/alumni', async (req, res) => {
         console.error('Alumni page error:', err);
         res.status(500).send('Error loading alumni page');
     }
+});
+
+router.get('/login', (req, res) => {
+    res.render('login');
+});
+
+router.get('/logout', (req, res) => {
+    res.clearCookie('authToken');
+    res.redirect('/login');
 });
 
 module.exports = router;
