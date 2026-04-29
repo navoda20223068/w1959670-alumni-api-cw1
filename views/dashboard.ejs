@@ -54,6 +54,51 @@
             margin-top: 20px;
         }
 
+        button, .btn {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 8px;
+            background: #1f2937;
+            color: white;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+        }
+
+        .filter-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .filters {
+            display: flex;
+            gap: 16px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .filters label {
+            display: block;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: #374151;
+        }
+
+        .filters select {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            min-width: 180px;
+        }
+
         canvas {
             width: 100% !important;
             height: 290px !important;
@@ -71,6 +116,39 @@
 
 <div class="container">
     <h1>Alumni Analytics Dashboard</h1>
+
+    <div class="filter-card">
+        <form method="GET" action="/dashboard" class="filters">
+            <div>
+                <label for="programme">Programme</label>
+                <select name="programme" id="programme">
+                    <option value="">All Programmes</option>
+                    <% programmes.forEach(p => { %>
+                        <option value="<%= p.programme %>"
+                                <%= filters.programme === p.programme ? 'selected' : '' %>>
+                            <%= p.programme %>
+                        </option>
+                    <% }) %>
+                </select>
+            </div>
+
+            <div>
+                <label for="graduationYear">Graduation Year</label>
+                <select name="graduationYear" id="graduationYear">
+                    <option value="">All Years</option>
+                    <% graduationYears.forEach(y => { %>
+                        <option value="<%= y.year %>"
+                                <%= filters.graduationYear == y.year ? 'selected' : '' %>>
+                            <%= y.year %>
+                        </option>
+                    <% }) %>
+                </select>
+            </div>
+
+            <button type="submit">Apply Filters</button>
+            <a href="/dashboard" class="btn btn-secondary">Clear</a>
+        </form>
+    </div>
 
     <div class="grid">
         <div class="chart-card">
@@ -135,6 +213,20 @@
         '#14b8a6',
         '#f97316'
     ];
+    const activeFilters = <%- JSON.stringify(filters) %>;
+
+    if (activeFilters.programme || activeFilters.graduationYear) {
+        const subtitle = document.createElement('p');
+        subtitle.style.cssText = 'color:#6b7280;font-size:13px;margin:0 0 12px';
+        subtitle.textContent = [
+            activeFilters.programme ? `Programme: ${activeFilters.programme}` : '',
+            activeFilters.graduationYear ? `Year: ${activeFilters.graduationYear}` : ''
+        ].filter(Boolean).join(' · ');
+
+        document.querySelectorAll('.chart-card').forEach(card => {
+            card.insertBefore(subtitle.cloneNode(true), card.querySelector('canvas'));
+        });
+    }
 
     function showEmptyState(id) {
         const canvas = document.getElementById(id);

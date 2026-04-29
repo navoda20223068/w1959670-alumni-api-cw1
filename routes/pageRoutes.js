@@ -8,6 +8,9 @@ const db = require('../db');
 // Dashboard page
 router.get('/dashboard', async (req, res) => {
     try {
+        const { programme, graduationYear } = req.query;
+        const filters = { programme, graduationYear };
+
         const [
             industryData,
             topEmployers,
@@ -18,14 +21,14 @@ router.get('/dashboard', async (req, res) => {
             certifications,
             skillsGap
         ] = await Promise.all([
-            analyticsGet('/analytics/industry-distribution'),
-            analyticsGet('/analytics/top-employers'),
-            analyticsGet('/analytics/job-titles'),
-            analyticsGet('/analytics/locations'),
+            analyticsGet('/analytics/industry-distribution', filters),
+            analyticsGet('/analytics/top-employers', filters),
+            analyticsGet('/analytics/job-titles', filters),
+            analyticsGet('/analytics/locations', filters),
             analyticsGet('/analytics/graduation-years'),
             analyticsGet('/analytics/programmes'),
-            analyticsGet('/analytics/certification-trends'),
-            analyticsGet('/analytics/skills-gap')
+            analyticsGet('/analytics/certification-trends', filters),
+            analyticsGet('/analytics/skills-gap', filters)
         ]);
 
         res.render('dashboard', {
@@ -36,7 +39,11 @@ router.get('/dashboard', async (req, res) => {
             graduationYears,
             programmes,
             certifications,
-            skillsGap
+            skillsGap,
+            filters: {
+                programme: programme || '',
+                graduationYear: graduationYear || ''
+            }
         });
 
     } catch (err) {
@@ -44,6 +51,7 @@ router.get('/dashboard', async (req, res) => {
         res.status(500).send('Error loading dashboard');
     }
 });
+
 
 router.get('/alumni', async (req, res) => {
     try {

@@ -4,40 +4,74 @@ const db = require('../../db');
 
 exports.getIndustryDistribution = async function (req, res) {
     try {
-        const [rows] = await db.query(`
-            SELECT 
-                industry_sector,
-                COUNT(*) AS count
-            FROM employment_history
-            WHERE industry_sector IS NOT NULL
-            GROUP BY industry_sector
-            ORDER BY count DESC
-        `);
+        const { programme, graduationYear } = req.query;
+        const params = [];
 
-        return res.json({
-            success: true,
-            data: rows
-        });
+        let sql = `
+            SELECT eh.industry_sector, COUNT(*) AS count
+            FROM employment_history eh
+            JOIN users u ON eh.user_id = u.id
+        `;
+
+        if (programme || graduationYear) {
+            sql += ` JOIN degrees d ON d.user_id = u.id`;
+        }
+
+        sql += ` WHERE eh.industry_sector IS NOT NULL`;
+
+        if (programme) {
+            sql += ` AND d.degree_name LIKE ?`;
+            params.push(`%${programme}%`);
+        }
+
+        if (graduationYear) {
+            sql += ` AND YEAR(d.completion_date) = ?`;
+            params.push(graduationYear);
+        }
+
+        sql += ` GROUP BY eh.industry_sector ORDER BY count DESC`;
+
+        const [rows] = await db.query(sql, params);
+        return res.json({ success: true, data: rows });
 
     } catch (err) {
         console.error('Industry distribution error:', err);
-        return res.status(500).json({
-            error: 'Internal server error'
-        });
+        return res.status(500).json({ error: 'Internal server error' });
     }
 };
 
 exports.getTopEmployers = async function (req, res) {
     try {
-        const [rows] = await db.query(`
-            SELECT company_name, COUNT(*) AS count
-            FROM employment_history
-            WHERE company_name IS NOT NULL
-            GROUP BY company_name
-            ORDER BY count DESC
-        `);
+        const { programme, graduationYear } = req.query;
+        const params = [];
 
+        let sql = `
+            SELECT eh.company_name, COUNT(*) AS count
+            FROM employment_history eh
+            JOIN users u ON eh.user_id = u.id
+        `;
+
+        if (programme || graduationYear) {
+            sql += ` JOIN degrees d ON d.user_id = u.id`;
+        }
+
+        sql += ` WHERE eh.company_name IS NOT NULL`;
+
+        if (programme) {
+            sql += ` AND d.degree_name LIKE ?`;
+            params.push(`%${programme}%`);
+        }
+
+        if (graduationYear) {
+            sql += ` AND YEAR(d.completion_date) = ?`;
+            params.push(graduationYear);
+        }
+
+        sql += ` GROUP BY eh.company_name ORDER BY count DESC`;
+
+        const [rows] = await db.query(sql, params);
         res.json({ success: true, data: rows });
+
     } catch (err) {
         res.status(500).json({ error: 'Internal server error' });
     }
@@ -45,15 +79,36 @@ exports.getTopEmployers = async function (req, res) {
 
 exports.getJobTitles = async function (req, res) {
     try {
-        const [rows] = await db.query(`
-            SELECT job_title, COUNT(*) AS count
-            FROM employment_history
-            WHERE job_title IS NOT NULL
-            GROUP BY job_title
-            ORDER BY count DESC
-        `);
+        const { programme, graduationYear } = req.query;
+        const params = [];
 
+        let sql = `
+            SELECT eh.job_title, COUNT(*) AS count
+            FROM employment_history eh
+            JOIN users u ON eh.user_id = u.id
+        `;
+
+        if (programme || graduationYear) {
+            sql += ` JOIN degrees d ON d.user_id = u.id`;
+        }
+
+        sql += ` WHERE eh.job_title IS NOT NULL`;
+
+        if (programme) {
+            sql += ` AND d.degree_name LIKE ?`;
+            params.push(`%${programme}%`);
+        }
+
+        if (graduationYear) {
+            sql += ` AND YEAR(d.completion_date) = ?`;
+            params.push(graduationYear);
+        }
+
+        sql += ` GROUP BY eh.job_title ORDER BY count DESC`;
+
+        const [rows] = await db.query(sql, params);
         res.json({ success: true, data: rows });
+
     } catch (err) {
         res.status(500).json({ error: 'Internal server error' });
     }
@@ -61,15 +116,36 @@ exports.getJobTitles = async function (req, res) {
 
 exports.getLocationDistribution = async function (req, res) {
     try {
-        const [rows] = await db.query(`
-            SELECT location, COUNT(*) AS count
-            FROM employment_history
-            WHERE location IS NOT NULL
-            GROUP BY location
-            ORDER BY count DESC
-        `);
+        const { programme, graduationYear } = req.query;
+        const params = [];
 
+        let sql = `
+            SELECT eh.location, COUNT(*) AS count
+            FROM employment_history eh
+            JOIN users u ON eh.user_id = u.id
+        `;
+
+        if (programme || graduationYear) {
+            sql += ` JOIN degrees d ON d.user_id = u.id`;
+        }
+
+        sql += ` WHERE eh.location IS NOT NULL`;
+
+        if (programme) {
+            sql += ` AND d.degree_name LIKE ?`;
+            params.push(`%${programme}%`);
+        }
+
+        if (graduationYear) {
+            sql += ` AND YEAR(d.completion_date) = ?`;
+            params.push(graduationYear);
+        }
+
+        sql += ` GROUP BY eh.location ORDER BY count DESC`;
+
+        const [rows] = await db.query(sql, params);
         res.json({ success: true, data: rows });
+
     } catch (err) {
         res.status(500).json({ error: 'Internal server error' });
     }
@@ -82,10 +158,11 @@ exports.getGraduationYears = async function (req, res) {
             FROM degrees
             WHERE completion_date IS NOT NULL
             GROUP BY year
-            ORDER BY year DESC
+            ORDER BY year ASC
         `);
 
         res.json({ success: true, data: rows });
+
     } catch (err) {
         res.status(500).json({ error: 'Internal server error' });
     }
@@ -110,14 +187,34 @@ exports.getProgrammeDistribution = async function (req, res) {
 
 exports.getCertificationTrends = async function (req, res) {
     try {
-        const [rows] = await db.query(`
-            SELECT certification_name, COUNT(*) AS count
-            FROM certifications
-            WHERE certification_name IS NOT NULL
-            GROUP BY certification_name
-            ORDER BY count DESC
-        `);
+        const { programme, graduationYear } = req.query;
+        const params = [];
 
+        let sql = `
+            SELECT c.certification_name, COUNT(*) AS count
+            FROM certifications c
+            JOIN users u ON c.user_id = u.id
+        `;
+
+        if (programme || graduationYear) {
+            sql += ` JOIN degrees d ON d.user_id = u.id`;
+        }
+
+        sql += ` WHERE c.certification_name IS NOT NULL`;
+
+        if (programme) {
+            sql += ` AND d.degree_name LIKE ?`;
+            params.push(`%${programme}%`);
+        }
+
+        if (graduationYear) {
+            sql += ` AND YEAR(d.completion_date) = ?`;
+            params.push(graduationYear);
+        }
+
+        sql += ` GROUP BY c.certification_name ORDER BY count DESC`;
+
+        const [rows] = await db.query(sql, params);
         res.json({ success: true, data: rows });
 
     } catch (err) {
@@ -127,10 +224,35 @@ exports.getCertificationTrends = async function (req, res) {
 
 exports.getSkillsGap = async function (req, res) {
     try {
-        const [certs] = await db.query(`SELECT COUNT(*) AS count FROM certifications`);
-        const [courses] = await db.query(`SELECT COUNT(*) AS count FROM professional_courses`);
-        const [licences] = await db.query(`SELECT COUNT(*) AS count FROM licences`);
-        const [degrees] = await db.query(`SELECT COUNT(*) AS count FROM degrees`);
+        const { programme, graduationYear } = req.query;
+        const params = [];
+
+        const buildFilter = (table, alias, joinAlias = 'd') => {
+            let sql = `SELECT COUNT(*) AS count FROM ${table} ${alias} JOIN users u ON ${alias}.user_id = u.id`;
+
+            if (programme || graduationYear) {
+                sql += ` JOIN degrees ${joinAlias} ON ${joinAlias}.user_id = u.id`;
+            }
+
+            sql += ` WHERE 1=1`;
+
+            if (programme) {
+                sql += ` AND ${joinAlias}.degree_name LIKE ?`;
+                params.push(`%${programme}%`);
+            }
+
+            if (graduationYear) {
+                sql += ` AND YEAR(${joinAlias}.completion_date) = ?`;
+                params.push(graduationYear);
+            }
+
+            return sql;
+        };
+
+        const [certs] = await db.query(buildFilter('certifications', 'c'), params.splice(0));
+        const [courses] = await db.query(buildFilter('professional_courses', 'pc'), params.splice(0));
+        const [licences] = await db.query(buildFilter('licences', 'l'), params.splice(0));
+        const [degrees] = await db.query(buildFilter('degrees', 'deg', 'deg'), params.splice(0));
 
         const data = [
             { skill: 'Certifications', count: certs[0].count },
