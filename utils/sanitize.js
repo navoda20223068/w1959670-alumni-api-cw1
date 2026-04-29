@@ -1,11 +1,14 @@
 'use strict';
 
+const xss = require('xss');
+
 function sanitiseString(value) {
     if (typeof value !== 'string') {
         return value;
     }
 
-    return value.trim().replace(/\s+/g, ' ');
+    // Strip HTML tags and script injection, then trim and collapse whitespace
+    return xss(value.trim().replace(/\s+/g, ' '));
 }
 
 function sanitiseObject(input) {
