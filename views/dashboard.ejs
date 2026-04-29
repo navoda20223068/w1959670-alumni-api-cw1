@@ -3,6 +3,7 @@
 <head>
     <title>Alumni Analytics Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
         body {
@@ -99,6 +100,13 @@
             min-width: 180px;
         }
 
+        .export-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
         canvas {
             width: 100% !important;
             height: 290px !important;
@@ -150,6 +158,13 @@
         </form>
     </div>
 
+    <div class="export-bar">
+        <button onclick="exportDashboardPDF()">Export PDF Report</button>
+        <button onclick="downloadChartImage('industryChart', 'industry-distribution')" class="btn btn-secondary">Save Industry Chart</button>
+        <button onclick="downloadChartImage('certificationChart', 'certification-trends')" class="btn btn-secondary">Save Certification Chart</button>
+        <button onclick="downloadChartImage('skillsGapChart', 'skills-gap')" class="btn btn-secondary">Save Skills Gap Chart</button>
+    </div>
+
     <div class="grid">
         <div class="chart-card">
             <h2>Industry Distribution</h2>
@@ -194,6 +209,7 @@
 </div>
 
 <script>
+    const activeFilters = <%- JSON.stringify(filters) %>;
     const industryData = <%- JSON.stringify(industryData || []) %>;
     const topEmployers = <%- JSON.stringify(topEmployers || []) %>;
     const jobTitles = <%- JSON.stringify(jobTitles || []) %>;
@@ -213,7 +229,8 @@
         '#14b8a6',
         '#f97316'
     ];
-    const activeFilters = <%- JSON.stringify(filters) %>;
+
+    const chartInstances = {};
 
     if (activeFilters.programme || activeFilters.graduationYear) {
         const subtitle = document.createElement('p');
@@ -245,7 +262,7 @@
             return;
         }
 
-        new Chart(document.getElementById(id), {
+        chartInstances[id] = new Chart(document.getElementById(id), {
             type,
             data: {
                 labels,
@@ -293,6 +310,91 @@
                 }
             }
         });
+    }
+
+    function downloadChartImage(chartId, filename) {
+        const chart = chartInstances[chartId];
+        if (!chart) {
+            alert('Chart not available for download.');
+            return;
+        }
+
+        const link = document.createElement('a');
+        link.href = chart.toBase64Image();
+        link.download = `${filename}.png`;
+        link.click();
+    }
+
+    function exportDashboardPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('landscape', 'mm', 'a4');
+
+        const pageW = doc.internal.pageSize.getWidth();
+        const pageH = doc.internal.pageSize.getHeight();
+        const margin = 10;
+        const chartW = (pageW - margin * 3) / 2;
+        const chartH = 80;
+
+        const activeFiltersText = [
+            activeFilters.programme ? `Programme: ${activeFilters.programme}` : '',
+            activeFilters.graduationYear ? `Year: ${activeFilters.graduationYear}` : ''
+        ].filter(Boolean).join('  |  ');
+
+        doc.setFontSize(16);
+        doc.text('Alumni Analytics Dashboard', margin, 15);
+
+        if (activeFiltersText) {
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Filters: ${activeFiltersText}`, margin, 22);
+            doc.setTextColor(0);
+        }
+
+        const chartIds = [
+            { id: 'industryChart',      label: 'Industry Distribution' },
+            { id: 'employerChart',      label: 'Top Employers' },
+            { id: 'jobTitleChart',      label: 'Most Common Job Titles' },
+            { id: 'locationChart',      label: 'Geographic Distribution' },
+            { id: 'graduationChart',    label: 'Graduation Year Distribution' },
+            { id: 'programmeChart',     label: 'Programme Distribution' },
+            { id: 'certificationChart', label: 'Certification Trends' },
+            { id: 'skillsGapChart',     label: 'Skills Gap Overview' }
+        ];
+
+        let startY = 28;
+        let col = 0;
+
+        chartIds.forEach(({ id, label }, i) => {
+            const chart = chartInstances[id];
+            if (!chart) return;
+
+            const x = margin + col * (chartW + margin);
+
+            doc.setFontSize(9);
+            doc.text(label, x, startY);
+
+            const imgData = chart.toBase64Image();
+            doc.addImage(imgData, 'PNG', x, startY + 3, chartW, chartH);
+
+            col++;
+
+            if (col === 2) {
+                col = 0;
+                startY += chartH + 16;
+
+                if (startY + chartH > pageH - margin && i < chartIds.length - 1) {
+                    doc.addPage();
+                    startY = 15;
+                }
+            }
+        });
+
+        const dateStr = new Date().toLocaleDateString();
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`Generated: ${dateStr}`, margin, pageH - 5);
+
+        doc.save('alumni-analytics-report.pdf');
     }
 
     createChart(
