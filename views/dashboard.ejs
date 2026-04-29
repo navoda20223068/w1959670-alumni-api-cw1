@@ -107,6 +107,27 @@
             flex-wrap: wrap;
         }
 
+        .gap-legend {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #374151;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
         canvas {
             width: 100% !important;
             height: 290px !important;
@@ -201,9 +222,14 @@
             <canvas id="certificationChart"></canvas>
         </div>
 
-        <div class="chart-card">
+        <div class="chart-card" style="height:400px;">
             <h2>Skills Gap Overview</h2>
             <canvas id="skillsGapChart"></canvas>
+            <div class="gap-legend">
+                <span class="legend-item"><span class="dot" style="background:#ef4444"></span>Critical (≤2)</span>
+                <span class="legend-item"><span class="dot" style="background:#f59e0b"></span>Emerging (≤5)</span>
+                <span class="legend-item"><span class="dot" style="background:#22c55e"></span>Healthy (>5)</span>
+            </div>
         </div>
     </div>
 </div>
@@ -463,13 +489,70 @@
         'Certifications'
     );
 
-    createChart(
-        'skillsGapChart',
-        'radar',
-        skillsGap.map(x => x.skill),
-        skillsGap.map(x => x.count),
-        'Skills Gap'
-    );
+    (function renderSkillsGapChart() {
+        const id = 'skillsGapChart';
+
+        if (!skillsGap.length) {
+            showEmptyState(id);
+            return;
+        }
+
+        const thresholds = { critical: 2, emerging: 5 };
+
+        function getColour(count) {
+            if (count <= thresholds.critical) return '#ef4444';
+            if (count <= thresholds.emerging) return '#f59e0b';
+            return '#22c55e';
+        }
+
+        function getLabel(count) {
+            if (count <= thresholds.critical) return 'Critical';
+            if (count <= thresholds.emerging) return 'Emerging';
+            return 'Healthy';
+        }
+
+        const labels = skillsGap.map(x => x.skill);
+        const values = skillsGap.map(x => Number(x.count));
+        const colours = values.map(getColour);
+
+        chartInstances[id] = new Chart(document.getElementById(id), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Skills Gap Analysis',
+                    data: values,
+                    backgroundColor: colours,
+                    borderColor: colours,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                return `Status: ${getLabel(context.raw)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Skill Category' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Count' },
+                        ticks: { precision: 0 }
+                    }
+                }
+            }
+        });
+    })();
 </script>
 
 </body>
