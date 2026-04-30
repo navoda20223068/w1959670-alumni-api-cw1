@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Alumni Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f5f7fb;
+            color: #222;
+        }
+
+        nav {
+            background: #1f2937;
+            padding: 14px 30px;
+        }
+
+        nav a {
+            color: white;
+            margin-right: 20px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .container {
+            padding: 30px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(350px, 1fr));
+            gap: 24px;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            height: 360px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            position: relative;
+        }
+
+        .chart-card h2 {
+            margin-top: 0;
+            font-size: 20px;
+        }
+
+        .empty-state {
+            color: #777;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        button, .btn {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 8px;
+            background: #1f2937;
+            color: white;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+        }
+
+        .filter-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .filters {
+            display: flex;
+            gap: 16px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .filters label {
+            display: block;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: #374151;
+        }
+
+        .filters select {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            min-width: 180px;
+        }
+
+        .export-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .gap-legend {
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #374151;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 4px solid #e5e7eb;
+            border-top-color: #1f2937;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin: 80px auto 0;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 290px !important;
+        }
+    </style>
+</head>
+
+<body>
+
+<nav>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/alumni">Alumni</a>
+    <a href="/analytics">Analytics</a>
+</nav>
+
+<div class="container">
+    <h1>Alumni Analytics Dashboard</h1>
+
+    <div class="filter-card">
+        <form method="GET" action="/dashboard" class="filters">
+            <div>
+                <label for="programme">Programme</label>
+                <select name="programme" id="programme">
+                    <option value="">All Programmes</option>
+                    <% programmes.forEach(p => { %>
+                        <option value="<%= p.programme %>"
+                                <%= filters.programme === p.programme ? 'selected' : '' %>>
+                            <%= p.programme %>
+                        </option>
+                    <% }) %>
+                </select>
+            </div>
+
+            <div>
+                <label for="graduationYear">Graduation Year</label>
+                <select name="graduationYear" id="graduationYear">
+                    <option value="">All Years</option>
+                    <% graduationYears.forEach(y => { %>
+                        <option value="<%= y.year %>"
+                                <%= filters.graduationYear == y.year ? 'selected' : '' %>>
+                            <%= y.year %>
+                        </option>
+                    <% }) %>
+                </select>
+            </div>
+
+            <button type="submit">Apply Filters</button>
+            <a href="/dashboard" class="btn btn-secondary">Clear</a>
+        </form>
+    </div>
+
+    <div class="export-bar">
+        <button onclick="exportDashboardPDF()">Export PDF Report</button>
+        <button onclick="downloadChartImage('industryChart', 'industry-distribution')" class="btn btn-secondary">Save Industry Chart</button>
+        <button onclick="downloadChartImage('certificationChart', 'certification-trends')" class="btn btn-secondary">Save Certification Chart</button>
+        <button onclick="downloadChartImage('skillsGapChart', 'skills-gap')" class="btn btn-secondary">Save Skills Gap Chart</button>
+        <a href="/logout" class="btn btn-secondary">Logout</a>
+    </div>
+
+    <div class="grid">
+        <div class="chart-card">
+            <h2>Industry Distribution</h2>
+            <div class="spinner" id="spinner-industryChart"></div>
+            <canvas id="industryChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h2>Top Employers</h2>
+            <div class="spinner" id="spinner-employerChart"></div>
+            <canvas id="employerChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h2>Most Common Job Titles</h2>
+            <div class="spinner" id="spinner-jobTitleChart"></div>
+            <canvas id="jobTitleChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h2>Geographic Distribution</h2>
+            <div class="spinner" id="spinner-locationChart"></div>
+            <canvas id="locationChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h2>Graduation Year Distribution</h2>
+            <div class="spinner" id="spinner-graduationChart"></div>
+            <canvas id="graduationChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h2>Programme Distribution</h2>
+            <div class="spinner" id="spinner-programmeChart"></div>
+            <canvas id="programmeChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <h2>Certification Trends</h2>
+            <div class="spinner" id="spinner-certificationChart"></div>
+            <canvas id="certificationChart"></canvas>
+        </div>
+
+        <div class="chart-card" style="height:400px;">
+            <h2>Skills Gap Overview</h2>
+            <div class="spinner" id="spinner-skillsGapChart"></div>
+            <canvas id="skillsGapChart"></canvas>
+            <div class="gap-legend">
+                <span class="legend-item"><span class="dot" style="background:#ef4444"></span>Critical (≤2)</span>
+                <span class="legend-item"><span class="dot" style="background:#f59e0b"></span>Emerging (≤5)</span>
+                <span class="legend-item"><span class="dot" style="background:#22c55e"></span>Healthy (>5)</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const activeFilters = <%- JSON.stringify(filters) %>;
+    const industryData = <%- JSON.stringify(industryData || []) %>;
+    const topEmployers = <%- JSON.stringify(topEmployers || []) %>;
+    const jobTitles = <%- JSON.stringify(jobTitles || []) %>;
+    const locations = <%- JSON.stringify(locations || []) %>;
+    const graduationYears = <%- JSON.stringify(graduationYears || []) %>;
+    const programmes = <%- JSON.stringify(programmes || []) %>;
+    const certifications = <%- JSON.stringify(certifications || []) %>;
+    const skillsGap = <%- JSON.stringify(skillsGap || []) %>;
+
+    const chartColours = [
+        '#4f46e5',
+        '#22c55e',
+        '#f59e0b',
+        '#ef4444',
+        '#3b82f6',
+        '#a855f7',
+        '#14b8a6',
+        '#f97316'
+    ];
+
+    const chartInstances = {};
+
+    if (activeFilters.programme || activeFilters.graduationYear) {
+        const subtitle = document.createElement('p');
+        subtitle.style.cssText = 'color:#6b7280;font-size:13px;margin:0 0 12px';
+        subtitle.textContent = [
+            activeFilters.programme ? `Programme: ${activeFilters.programme}` : '',
+            activeFilters.graduationYear ? `Year: ${activeFilters.graduationYear}` : ''
+        ].filter(Boolean).join(' · ');
+
+        document.querySelectorAll('.chart-card').forEach(card => {
+            card.insertBefore(subtitle.cloneNode(true), card.querySelector('canvas'));
+        });
+    }
+
+    function showEmptyState(id) {
+        const canvas = document.getElementById(id);
+        canvas.style.display = 'none';
+
+        const emptyMessage = document.createElement('p');
+        emptyMessage.className = 'empty-state';
+        emptyMessage.textContent = 'No data available for this chart.';
+
+        canvas.parentElement.appendChild(emptyMessage);
+    }
+
+    function createChart(id, type, labels, values, label, xAxisLabel = 'Category', yAxisLabel = 'Count') {
+        const spinner = document.getElementById(`spinner-${id}`);
+
+        if (!labels.length || !values.length) {
+            if (spinner) spinner.style.display = 'none';
+            showEmptyState(id);
+            return;
+        }
+
+        chartInstances[id] = new Chart(document.getElementById(id), {
+            type,
+            data: {
+                labels,
+                datasets: [{
+                    label,
+                    data: values,
+                    backgroundColor: chartColours,
+                    borderColor: chartColours,
+                    borderWidth: 1,
+                    fill: type === 'line' ? false : true
+                }]
+            },
+            options: {
+                indexAxis: label === 'Top Employers' ? 'y' : 'x',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true
+                    },
+                    tooltip: {
+                        enabled: true
+                    }
+                },
+                scales: type === 'pie' || type === 'doughnut' || type === 'radar' ? {} : {
+                    x: {
+                        title: {
+                            display: true,
+                            text: label === 'Top Employers' ? 'Count' : xAxisLabel
+                        },
+                        ticks: {
+                            precision: 0
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: label === 'Top Employers' ? 'Employer' : yAxisLabel
+                        },
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+
+        if (spinner) spinner.style.display = 'none';
+    }
+
+    function downloadChartImage(chartId, filename) {
+        const chart = chartInstances[chartId];
+        if (!chart) {
+            alert('Chart not available for download.');
+            return;
+        }
+
+        const link = document.createElement('a');
+        link.href = chart.toBase64Image();
+        link.download = `${filename}.png`;
+        link.click();
+    }
+
+    function exportDashboardPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('landscape', 'mm', 'a4');
+
+        const pageW = doc.internal.pageSize.getWidth();
+        const pageH = doc.internal.pageSize.getHeight();
+        const margin = 10;
+        const chartW = (pageW - margin * 3) / 2;
+        const chartH = 80;
+
+        const activeFiltersText = [
+            activeFilters.programme ? `Programme: ${activeFilters.programme}` : '',
+            activeFilters.graduationYear ? `Year: ${activeFilters.graduationYear}` : ''
+        ].filter(Boolean).join('  |  ');
+
+        doc.setFontSize(16);
+        doc.text('Alumni Analytics Dashboard', margin, 15);
+
+        if (activeFiltersText) {
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Filters: ${activeFiltersText}`, margin, 22);
+            doc.setTextColor(0);
+        }
+
+        const chartIds = [
+            { id: 'industryChart',      label: 'Industry Distribution' },
+            { id: 'employerChart',      label: 'Top Employers' },
+            { id: 'jobTitleChart',      label: 'Most Common Job Titles' },
+            { id: 'locationChart',      label: 'Geographic Distribution' },
+            { id: 'graduationChart',    label: 'Graduation Year Distribution' },
+            { id: 'programmeChart',     label: 'Programme Distribution' },
+            { id: 'certificationChart', label: 'Certification Trends' },
+            { id: 'skillsGapChart',     label: 'Skills Gap Overview' }
+        ];
+
+        let startY = 28;
+        let col = 0;
+
+        chartIds.forEach(({ id, label }, i) => {
+            const chart = chartInstances[id];
+            if (!chart) return;
+
+            const x = margin + col * (chartW + margin);
+
+            doc.setFontSize(9);
+            doc.text(label, x, startY);
+
+            const imgData = chart.toBase64Image();
+            doc.addImage(imgData, 'PNG', x, startY + 3, chartW, chartH);
+
+            col++;
+
+            if (col === 2) {
+                col = 0;
+                startY += chartH + 16;
+
+                if (startY + chartH > pageH - margin && i < chartIds.length - 1) {
+                    doc.addPage();
+                    startY = 15;
+                }
+            }
+        });
+
+        const dateStr = new Date().toLocaleDateString();
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`Generated: ${dateStr}`, margin, pageH - 5);
+
+        doc.save('alumni-analytics-report.pdf');
+    }
+
+    createChart(
+        'industryChart',
+        'bar',
+        industryData.map(x => x.industry_sector),
+        industryData.map(x => x.count),
+        'Alumni by Industry',
+        'Industry Sector',
+        'Alumni Count'
+    );
+
+    createChart(
+        'employerChart',
+        'bar',
+        topEmployers.slice(0, 5).map(x => x.company_name),
+        topEmployers.slice(0, 5).map(x => x.count),
+        'Top Employers',
+        'Employer',
+        'Alumni Count'
+    );
+
+    createChart(
+        'jobTitleChart',
+        'bar',
+        jobTitles.map(x => x.job_title),
+        jobTitles.map(x => x.count),
+        'Job Titles',
+        'Job Title',
+        'Alumni Count'
+    );
+
+    createChart(
+        'locationChart',
+        'pie',
+        locations.map(x => x.location),
+        locations.map(x => x.count),
+        'Locations'
+    );
+
+    createChart(
+        'graduationChart',
+        'line',
+        graduationYears.map(x => x.year),
+        graduationYears.map(x => x.count),
+        'Graduation Years',
+        'Graduation Year',
+        'Alumni Count'
+    );
+
+    createChart(
+        'programmeChart',
+        'bar',
+        programmes.map(x => x.programme),
+        programmes.map(x => x.count),
+        'Programmes',
+        'Programme',
+        'Alumni Count'
+    );
+
+    createChart(
+        'certificationChart',
+        'doughnut',
+        certifications.map(x => x.certification_name),
+        certifications.map(x => x.count),
+        'Certifications'
+    );
+
+    (function renderSkillsGapChart() {
+        const id = 'skillsGapChart';
+        const spinner = document.getElementById(`spinner-${id}`);
+
+        if (!skillsGap.length) {
+            if (spinner) spinner.style.display = 'none';
+            showEmptyState(id);
+            return;
+        }
+
+        const thresholds = { critical: 2, emerging: 5 };
+
+        function getColour(count) {
+            if (count <= thresholds.critical) return '#ef4444';
+            if (count <= thresholds.emerging) return '#f59e0b';
+            return '#22c55e';
+        }
+
+        function getLabel(count) {
+            if (count <= thresholds.critical) return 'Critical';
+            if (count <= thresholds.emerging) return 'Emerging';
+            return 'Healthy';
+        }
+
+        const labels = skillsGap.map(x => x.skill);
+        const values = skillsGap.map(x => Number(x.count));
+        const colours = values.map(getColour);
+
+        chartInstances[id] = new Chart(document.getElementById(id), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Skills Gap Analysis',
+                    data: values,
+                    backgroundColor: colours,
+                    borderColor: colours,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                return `Status: ${getLabel(context.raw)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Skill Category' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Count' },
+                        ticks: { precision: 0 }
+                    }
+                }
+            }
+        });
+
+        if (spinner) spinner.style.display = 'none';
+    })();
+</script>
+
+</body>
+</html>

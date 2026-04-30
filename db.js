@@ -1,16 +1,16 @@
-'use strict'
+'use strict';
 
-// faux database
+const mysql = require('mysql2/promise');
 
-var pets = exports.pets = [];
+const pool = mysql.createPool({
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'alumni_api_cw1',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
 
-pets.push({ name: 'Tobi', id: 0 });
-pets.push({ name: 'Loki', id: 1 });
-pets.push({ name: 'Jane', id: 2 });
-pets.push({ name: 'Raul', id: 3 });
-
-var users = exports.users = [];
-
-users.push({ name: 'TJ', pets: [pets[0], pets[1], pets[2]], id: 0  });
-users.push({ name: 'Guillermo', pets: [pets[3]], id: 1 });
-users.push({ name: 'Nathan', pets: [], id: 2 });
+module.exports = pool;

@@ -1,19 +1,35 @@
 {
-  "name": "express-mvc",
+  "name": "alumni-influencer-api",
   "version": "1.0.0",
-  "description": "Express MVC example from expressjs/express",
-  "main": "index.js",
+  "description": "Coursework API for the Alumni Influencer Platform",
+  "main": "app.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node app.js",
+    "dev": "nodemon app.js"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "ejs": "^5.0.2",
     "express": "^4.21.0",
+    "express-rate-limit": "^8.3.2",
     "express-session": "^1.18.0",
+    "helmet": "^8.1.0",
+    "joi": "^18.1.2",
+    "jsonwebtoken": "^9.0.3",
     "method-override": "^3.0.0",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "multer": "^2.1.1",
+    "mysql2": "^3.20.0",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.4",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "xss": "^1.0.15"
   }
 }

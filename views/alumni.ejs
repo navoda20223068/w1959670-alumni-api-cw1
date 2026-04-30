@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Alumni Directory</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f5f7fb;
+            color: #222;
+        }
+
+        nav {
+            background: #1f2937;
+            padding: 14px 30px;
+        }
+
+        nav a {
+            color: white;
+            margin-right: 20px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .container {
+            padding: 30px;
+        }
+
+        .filter-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        input {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        button, .btn {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 8px;
+            background: #1f2937;
+            color: white;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f3f4f6;
+        }
+
+        .empty {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            color: #777;
+        }
+    </style>
+</head>
+
+<body>
+
+<nav>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/alumni">Alumni</a>
+    <a href="/analytics">Analytics</a>
+</nav>
+
+<div class="container">
+    <h1>Alumni Directory</h1>
+
+    <div class="filter-card">
+        <form method="GET" action="/alumni" class="filters">
+            <input
+                    type="text"
+                    name="programme"
+                    placeholder="Programme"
+                    value="<%= filters.programme %>"
+            >
+
+            <input
+                    type="number"
+                    name="graduationYear"
+                    placeholder="Graduation Year"
+                    value="<%= filters.graduationYear %>"
+            >
+
+            <input
+                    type="text"
+                    name="industry"
+                    placeholder="Industry Sector"
+                    value="<%= filters.industry %>"
+            >
+
+            <button type="submit">Search</button>
+        </form>
+
+        <br>
+
+        <a href="/alumni" class="btn btn-secondary">Clear Filters</a>
+        <button onclick="exportTableToCSV()">Export CSV</button>
+        <a href="/logout">Logout</a>
+    </div>
+
+    <% if (!alumni.length) { %>
+        <div class="empty">No alumni found for the selected filters.</div>
+    <% } else { %>
+        <table id="alumniTable">
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Programme</th>
+                <th>Graduation Year</th>
+                <th>Current Role</th>
+                <th>Employer</th>
+                <th>Industry</th>
+                <th>LinkedIn</th>
+            </tr>
+            </thead>
+            <tbody>
+            <% alumni.forEach(person => { %>
+                <tr>
+                    <td><%= person.first_name %> <%= person.last_name %></td>
+                    <td><%= person.programme || '-' %></td>
+                    <td><%= person.graduation_year || '-' %></td>
+                    <td><%= person.job_title || '-' %></td>
+                    <td><%= person.company_name || '-' %></td>
+                    <td><%= person.industry_sector || '-' %></td>
+                    <td>
+                        <% if (person.linkedin_url) { %>
+                            <a href="<%= person.linkedin_url %>" target="_blank">View</a>
+                        <% } else { %>
+                            -
+                        <% } %>
+                    </td>
+                </tr>
+            <% }) %>
+            </tbody>
+        </table>
+    <% } %>
+</div>
+
+<script>
+    function exportTableToCSV() {
+        const table = document.getElementById('alumniTable');
+
+        if (!table) {
+            alert('No data available to export.');
+            return;
+        }
+
+        const rows = Array.from(table.querySelectorAll('tr'));
+
+        const csv = rows.map(row => {
+            const cells = Array.from(row.querySelectorAll('th, td'));
+
+            return cells.map(cell => {
+                const text = cell.innerText.replace(/"/g, '""');
+                return `"${text}"`;
+            }).join(',');
+        }).join('\n');
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+
+        link.href = URL.createObjectURL(blob);
+        link.download = 'filtered_alumni.csv';
+        link.click();
+    }
+</script>
+
+</body>
+</html>
